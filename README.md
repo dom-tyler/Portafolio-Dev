@@ -26,7 +26,7 @@ docs/CONTENT_REVIEW.md   afirmaciones pendientes de validar antes de publicar
 ## Dirección visual
 Cyberpunk sobrio, con igloo.inc como referente: microtipografía HUD, línea fina y cámara continua. El HTML se renderiza primero y el 3D llega como mejora progresiva.
 Paleta: grafito `#07090A`, marfil `#ECE6D9`, neón `#FF2A44`, cobre `#D4823F`, verde PCB `#1DB46E`.
-Tipos: Instrument Sans (títulos y texto), IBM Plex Mono (HUD y datos).
+Tipos: Unbounded (títulos, 650–800) e IBM Plex Mono (texto corrido, HUD y datos).
 
 ## Contrato del hero (para las variantes WebGL y video)
 `src/components/hero/Hero.astro` expone:

@@ -9,7 +9,7 @@ import { HEX, mixCss, rgba } from './palette';
  */
 
 export const MONO = '"IBM Plex Mono", ui-monospace, monospace';
-export const SANS = '"Instrument Sans Variable", ui-sans-serif, sans-serif';
+export const SANS = '"Unbounded Variable", ui-sans-serif, sans-serif';
 
 export async function loadFonts(): Promise<void> {
   if (!('fonts' in document)) return;

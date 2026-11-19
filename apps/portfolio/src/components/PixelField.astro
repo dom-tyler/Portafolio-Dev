@@ -1,0 +1,236 @@
+---
+/**
+ * Fondo reactivo de píxeles para el resto de la página (debajo del hero).
+ * Rejilla de puntos cuadrados cuyo brillo talla un ruido de valor, con respiración independiente
+ * por punto, zonas que derivan lentamente, halo bajo el cursor y onda expansiva al hacer clic.
+ * Adaptado de un experimento propio (Background Reactive Junie) a la paleta del sitio.
+ *
+ * - Un solo <canvas> 2D fijo detrás del contenido; el hero lo cubre con su escena opaca.
+ * - Solo anima cuando el hero ya no ocupa la pantalla, la pestaña es visible y el movimiento
+ *   no está pausado. Con prefers-reduced-motion o data-motion="paused" dibuja un cuadro estático.
+ */
+---
+
+<canvas class="pixel-field" data-pixel-field aria-hidden="true"></canvas>
+
+<style>
+  .pixel-field {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.2s var(--ease-out);
+  }
+  .pixel-field.is-on {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-pixel-field]');
+  const ctx = canvas?.getContext('2d', { alpha: true });
+
+  if (canvas && ctx) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const hero = document.querySelector<HTMLElement>('[data-hero]');
+
+    const CELL = 14; // separación de la rejilla (px CSS)
+    const DOT = 2; // lado del píxel: entero para que quede nítido
+    const NEON = '#ff2a44';
+    const RIPPLE_SPEED = 900; // px/s
+    const RIPPLE_LIFE = 1100; // ms
+    const RIPPLE_BAND = 80; // px
+    const CURSOR_R = 140; // px
+
+    type Dot = { x: number; y: number; base: number; seed: number; speed: number; appearAt: number };
+    type Ripple = { x: number; y: number; start: number };
+
+    let dots: Dot[] = [];
+    let ripples: Ripple[] = [];
+    let w = 0;
+    let h = 0;
+    let raf = 0;
+    let startTime = performance.now();
+    let paused = hero?.dataset.motion === 'paused';
+    let pageVisible = document.visibilityState !== 'hidden';
+    let uncovered = false;
+    const pointer = { x: -9999, y: -9999, active: false };
+
+    // Ruido de valor barato y determinista: talla "continentes" de brillo.
+    const hash = (x: number, y: number) => {
+      const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+      return s - Math.floor(s);
+    };
+    const smooth = (t: number) => t * t * (3 - 2 * t);
+    const noise = (x: number, y: number) => {
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const sx = smooth(x - x0);
+      const sy = smooth(y - y0);
+      const a = hash(x0, y0);
+      const b = hash(x0 + 1, y0);
+      const c = hash(x0, y0 + 1);
+      const d = hash(x0 + 1, y0 + 1);
+      const top = a + sx * (b - a);
+      return top + sy * (c + sx * (d - c) - top);
+    };
+
+    const build = () => {
+      const cols = Math.ceil(w / CELL);
+      const rows = Math.ceil(h / CELL);
+      const next: Dot[] = [];
+      for (let j = 0; j < rows; j++) {
+        for (let i = 0; i < cols; i++) {
+          const v = (noise(i * 0.05, j * 0.05) + noise(i * 0.11 + 40, j * 0.11 + 40) * 0.5) / 1.5;
+          next.push({
+            x: Math.round(i * CELL + CELL / 2),
+            y: Math.round(j * CELL + CELL / 2),
+            // Más tenue que la referencia: el texto manda.
+            base: 0.09 + v * 0.46,
+            seed: Math.random() * 1000,
+            speed: 0.6 + Math.random() * 1.3,
+            appearAt: Math.random() * 1400,
+          });
+        }
+      }
+      dots = next;
+    };
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      build();
+    };
+
+    const drawStatic = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = NEON;
+      for (const d of dots) {
+        ctx.globalAlpha = d.base * 0.7;
+        ctx.fillRect(d.x - 1, d.y - 1, DOT, DOT);
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const frame = (now: number) => {
+      raf = 0;
+      if (!running()) return;
+      raf = requestAnimationFrame(frame);
+      ctx.clearRect(0, 0, w, h);
+      const t = now - startTime;
+      ripples = ripples.filter((r) => now - r.start < RIPPLE_LIFE);
+      const drift = t * 0.00015;
+      const hot: { x: number; y: number; a: number; b: number }[] = [];
+
+      ctx.fillStyle = NEON;
+      for (const d of dots) {
+        const age = t - d.appearAt;
+        if (age < 0) continue;
+        const appear = Math.min(1, age / 400);
+        // Respiración propia de cada píxel (camino aleatorio suave, no un seno compartido)
+        const f = noise(t * 0.0013 * d.speed + d.seed, d.seed * 0.73);
+        const breathe = smooth(f);
+        // Zonas amplias que se apagan y encienden juntas
+        const zn = noise(d.x * 0.006 + drift, d.y * 0.006 - drift * 0.7);
+        const zone = 0.35 + 0.65 * smooth(zn);
+        let alpha = d.base * (0.12 + 0.88 * breathe) * zone * appear;
+
+        let boost = 0;
+        for (const r of ripples) {
+          const ra = now - r.start;
+          const life = 1 - ra / RIPPLE_LIFE;
+          const band = Math.abs(Math.hypot(d.x - r.x, d.y - r.y) - (ra / 1000) * RIPPLE_SPEED);
+          if (band < RIPPLE_BAND) boost = Math.max(boost, (1 - band / RIPPLE_BAND) * life * 0.85);
+        }
+        if (pointer.active) {
+          const pd = Math.hypot(d.x - pointer.x, d.y - pointer.y);
+          if (pd < CURSOR_R) boost = Math.max(boost, (1 - pd / CURSOR_R) * 0.32);
+        }
+        alpha = Math.min(1, alpha + boost);
+        if (alpha <= 0.012) continue;
+        if (boost > 0.05) {
+          hot.push({ x: d.x, y: d.y, a: alpha, b: boost });
+          continue;
+        }
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(d.x - 1, d.y - 1, DOT, DOT);
+      }
+      // Píxeles calientes (onda / cursor): del neón hacia el marfil
+      for (const p of hot) {
+        ctx.globalAlpha = p.a;
+        ctx.fillStyle = `rgb(255,${Math.round(42 + p.b * 150)},${Math.round(68 + p.b * 120)})`;
+        ctx.fillRect(p.x - 1, p.y - 1, DOT, DOT);
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    const animated = () => !reduced.matches && !paused;
+    const running = () => animated() && pageVisible && uncovered;
+
+    const update = () => {
+      // El hero cubre la pantalla mientras su borde inferior esté por debajo del viewport.
+      const covered = hero ? hero.getBoundingClientRect().bottom > window.innerHeight + 1 : false;
+      if (uncovered === !covered) return;
+      uncovered = !covered;
+      canvas.classList.toggle('is-on', uncovered);
+      if (!animated()) drawStatic();
+      kick();
+    };
+
+    const kick = () => {
+      if (!raf && running()) raf = requestAnimationFrame(frame);
+      if (!animated()) drawStatic();
+    };
+
+    let ticking = false;
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          ticking = false;
+          update();
+        });
+      },
+      { passive: true },
+    );
+    window.addEventListener('resize', () => {
+      resize();
+      update();
+      kick();
+    });
+    window.addEventListener('pointermove', (e) => {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+      pointer.active = true;
+    });
+    document.documentElement.addEventListener('pointerleave', () => (pointer.active = false));
+    window.addEventListener('pointerdown', (e) => {
+      if (!uncovered || !animated()) return;
+      ripples.push({ x: e.clientX, y: e.clientY, start: performance.now() });
+      if (ripples.length > 6) ripples.shift();
+    });
+    document.addEventListener('visibilitychange', () => {
+      pageVisible = document.visibilityState !== 'hidden';
+      kick();
+    });
+    window.addEventListener('hero:motion', (e) => {
+      paused = Boolean((e as CustomEvent<{ paused: boolean }>).detail?.paused);
+      kick();
+    });
+    reduced.addEventListener('change', kick);
+
+    resize();
+    startTime = performance.now();
+    update();
+    kick();
+  }
+</script>

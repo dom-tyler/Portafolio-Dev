@@ -34,7 +34,8 @@
 
   body {
     min-height: 100dvh;
-    background: var(--c-graphite);
+    /* Transparente: el grafito vive en <html> y el fondo de píxeles (PixelField) queda visible. */
+    background: transparent;
     font-family: var(--font-sans);
     font-size: 1rem;
     line-height: 1.55;

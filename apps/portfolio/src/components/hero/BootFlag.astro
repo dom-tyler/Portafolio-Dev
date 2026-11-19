@@ -1,0 +1,33 @@
+---
+/**
+ * Bandera del onboarding, inline en <head> para decidir antes del primer pintado.
+ * Pone `is-booting` en <html> si habrá escena (escritorio, o móvil con >= 4 núcleos y sin ahorro
+ * de datos). `boot-short` en revisitas de la misma sesión; `boot-reduced` con reduced-motion.
+ * Salvaguarda: si el script del hero nunca termina, la clase se quita a los 8 s.
+ */
+---
+
+<script is:inline>
+  (function () {
+    try {
+      var d = document.documentElement;
+      var mq = function (q) {
+        return window.matchMedia(q).matches;
+      };
+      var save = navigator.connection && navigator.connection.saveData;
+      var desk = mq('(min-width: 768px)');
+      var cores = navigator.hardwareConcurrency || 2;
+      if (save || (!desk && cores < 4)) return;
+      var seen = false;
+      try {
+        seen = sessionStorage.getItem('do-boot') === '1';
+      } catch (e) {}
+      d.classList.add('is-booting');
+      if (seen) d.classList.add('boot-short');
+      if (mq('(prefers-reduced-motion: reduce)')) d.classList.add('boot-reduced');
+      setTimeout(function () {
+        d.classList.remove('is-booting', 'boot-short', 'boot-reduced');
+      }, 8000);
+    } catch (e) {}
+  })();
+</script>

@@ -11,14 +11,17 @@
  * - Si la escena carga, añadir la clase `is-media-ready` a [data-hero] para ocultar el póster.
  * - Respetar [data-hero][data-motion="paused"] (botón de pausa) y prefers-reduced-motion.
  * - Con menos de 768px el hero no tiene recorrido de scroll: póster liviano.
+ * - Onboarding (variante WebGL): mientras <html> tiene `is-booting`, el copy, el header y el póster
+ *   se ocultan y el chip se enciende en el centro. Al terminar, la variante emite `hero:reveal`
+ *   y el titular entra con un efecto de decodificación (el texto real queda en aria-label).
  */
 import CircuitPoster from './CircuitPoster.astro';
 import { site } from '../../content/site';
 
 const scenes = [
-  { id: 1, code: 'L0', title: 'Silicio', body: 'Algoritmos en C y electrónica digital. Donde empezó todo.' },
-  { id: 2, code: 'L1', title: 'Interfaz', body: 'Productos comerciales: catálogos, filtros, pagos y experiencia.' },
-  { id: 3, code: 'L2', title: 'Servicios + IA', body: 'APIs, datos, integraciones y recuperación con modelos de lenguaje.' },
+  { id: 1, code: 'L0', title: 'Silicio', body: 'Algoritmos en C y electrónica digital. El núcleo donde empezó todo.' },
+  { id: 2, code: 'L1', title: 'Integración', body: 'Tomo las piezas y las conecto: pagos, mensajería, APIs y datos.' },
+  { id: 3, code: 'L2', title: 'Producto + IA', body: 'Interfaz, API, datos e IA trabajando como un solo sistema.', link: true },
 ];
 ---
 
@@ -63,7 +66,14 @@ const scenes = [
                 {String(s.id).padStart(2, '0')} / {s.code}
               </span>
               <span class="scene-title">{s.title}</span>
-              <span class="scene-body">{s.body}</span>
+              <span class="scene-body">
+                {s.body}
+                {s.link && (
+                  <a href="#proyectos" class="scene-link">
+                    Ver las capas en proyectos →
+                  </a>
+                )}
+              </span>
             </li>
           ))
         }
@@ -170,7 +180,8 @@ const scenes = [
     margin-bottom: 1.5rem;
   }
   .headline {
-    max-width: 14ch;
+    max-width: 15ch;
+    font-weight: 780;
   }
   .headline-2 {
     display: block;
@@ -239,14 +250,27 @@ const scenes = [
     color: var(--c-copper);
   }
   .scene-title {
-    font-size: 1.125rem;
-    font-weight: 600;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 650;
     letter-spacing: -0.01em;
   }
   .scene-body {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--c-muted);
-    max-width: 30ch;
+    max-width: 32ch;
+  }
+  .scene-link {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--c-copper);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .scene-link:hover {
+    color: var(--c-ivory);
   }
   .hero[data-scene='1'] [data-scene-item='1'],
   .hero[data-scene='2'] [data-scene-item='2'],
@@ -288,6 +312,39 @@ const scenes = [
   }
   .hero[data-motion='paused'] :global(*) {
     animation-play-state: paused !important;
+  }
+
+  /* Onboarding: el chip se enciende solo; el copy entra cuando aterriza (ver HeroWebGL). */
+  :global(html.is-booting) {
+    overflow: hidden;
+  }
+  .hero-copy,
+  .scene-list,
+  .hud-layer,
+  .hero-progress,
+  .motion-toggle {
+    transition: opacity 0.7s var(--ease-out);
+  }
+  :global(html.is-booting) .hero-copy,
+  :global(html.is-booting) .scene-list,
+  :global(html.is-booting) .hud-layer,
+  :global(html.is-booting) .hero-progress,
+  :global(html.is-booting) .motion-toggle,
+  :global(html.is-booting) .hero-poster,
+  :global(html.is-booting) .hero-scrim {
+    opacity: 0;
+  }
+  :global(html.is-booting) .hero-copy,
+  :global(html.is-booting) .scene-list,
+  :global(html.is-booting) .motion-toggle {
+    pointer-events: none;
+  }
+  :global(html.is-booting .site-header) {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .hero-scrim {
+    transition: opacity 0.9s var(--ease-out);
   }
 
   /* Móvil: sin recorrido de scroll; póster liviano. */
@@ -361,5 +418,49 @@ const scenes = [
     };
     setPaused(reduced.matches);
     toggle?.addEventListener('click', () => setPaused(hero.dataset.motion !== 'paused'));
+
+    // Decodificación del titular al terminar el onboarding. El texto real queda en aria-label
+    // mientras dura y los nodos se restauran exactos al final.
+    const title = hero.querySelector<HTMLElement>('#hero-title');
+    const decode = () => {
+      if (!title || reduced.matches) return;
+      const walker = document.createTreeWalker(title, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      while (walker.nextNode()) {
+        const n = walker.currentNode as Text;
+        if (n.data.trim()) nodes.push(n);
+      }
+      const originals = nodes.map((n) => n.data);
+      const total = originals.reduce((a, t) => a + t.length, 0);
+      const reveal: number[] = [];
+      for (let i = 0; i < total; i++) reveal.push((i / total) * 650 + Math.random() * 380);
+      const GLYPHS = '<>/_=+-*#01[]{}';
+      title.setAttribute('aria-label', title.textContent?.replace(/\s+/g, ' ').trim() ?? '');
+      const start = performance.now();
+      const step = (now: number) => {
+        const t = now - start;
+        let k = 0;
+        let pending = false;
+        nodes.forEach((n, j) => {
+          let out = '';
+          for (const ch of originals[j]) {
+            if (ch === ' ' || ch === '\n' || t >= reveal[k]) out += ch;
+            else {
+              out += GLYPHS[(Math.random() * GLYPHS.length) | 0];
+              pending = true;
+            }
+            k++;
+          }
+          n.data = out;
+        });
+        if (pending) requestAnimationFrame(step);
+        else {
+          nodes.forEach((n, j) => (n.data = originals[j]));
+          title.removeAttribute('aria-label');
+        }
+      };
+      requestAnimationFrame(step);
+    };
+    window.addEventListener('hero:reveal', decode, { once: true });
   }
 </script>

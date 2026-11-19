@@ -1,13 +1,14 @@
-import { AdditiveBlending, Color, DoubleSide, NormalBlending, ShaderMaterial, Vector3, type Texture } from 'three';
+import { AdditiveBlending, DoubleSide, NormalBlending, ShaderMaterial, Vector3, type Texture } from 'three';
 import { C } from './palette';
 
 /**
- * Uniformes compartidos por referencia entre todos los materiales: se actualizan una vez por cuadro.
- * Iluminación propia y barata (luz clave + hemisférica + luz puntual neón del die) en lugar de PBR
- * con mapas de entorno: controla mejor la paleta y pesa mucho menos.
+ * Uniformes compartidos por referencia entre los shaders propios (corriente, die, capas, partículas):
+ * se actualizan una vez por cuadro. Las piezas sólidas (encapsulado, pines, mano) usan PBR de three.
  */
 export const shared = {
   uTime: { value: 0 },
+  /** Reloj de la corriente: avanza con dt * velocidad (se acelera en hover sin saltos). */
+  uFlow: { value: 0 },
   uLightDir: { value: new Vector3(-0.45, 1, 0.35).normalize() },
   uNeonLightPos: { value: new Vector3(0, 0.6, 0) },
   uNeonLight: { value: 1 },
@@ -38,97 +39,6 @@ const lightPars = /* glsl */ `
   }
 `;
 
-const instancedVertex = /* glsl */ `
-  varying vec3 vN;
-  varying vec3 vW;
-  varying float vDepth;
-  varying vec2 vUv;
-  void main() {
-    mat4 m = modelMatrix;
-    #ifdef USE_INSTANCING
-      m = modelMatrix * instanceMatrix;
-    #endif
-    vec4 w = m * vec4(position, 1.0);
-    vW = w.xyz;
-    vN = normalize(mat3(m) * normal);
-    vUv = uv;
-    vec4 mv = viewMatrix * w;
-    vDepth = -mv.z;
-    gl_Position = projectionMatrix * mv;
-  }
-`;
-
-export interface LitOptions {
-  color: Color;
-  spec?: Color;
-  shininess?: number;
-  specK?: number;
-  rim?: number;
-  emissive?: Color;
-  opacity?: number;
-  map?: Texture | null;
-}
-
-/** Material sólido con iluminación propia. Soporta InstancedMesh y un mapa opcional (multiplicado). */
-export function litMaterial(o: LitOptions): ShaderMaterial {
-  const transparent = (o.opacity ?? 1) < 1;
-  return new ShaderMaterial({
-    defines: o.map ? { USE_LITMAP: '' } : {},
-    uniforms: {
-      ...shared,
-      uColor: { value: o.color },
-      uSpec: { value: o.spec ?? C.ivory },
-      uShin: { value: o.shininess ?? 40 },
-      uSpecK: { value: o.specK ?? 0.4 },
-      uRim: { value: o.rim ?? 0.15 },
-      uEmissive: { value: o.emissive ?? new Color(0, 0, 0) },
-      uOpacity: { value: o.opacity ?? 1 },
-      uNeon: { value: C.neon },
-      uMap: { value: o.map ?? null },
-    },
-    transparent,
-    depthWrite: !transparent,
-    vertexShader: instancedVertex,
-    fragmentShader: /* glsl */ `
-      uniform vec3 uColor;
-      uniform vec3 uSpec;
-      uniform float uShin;
-      uniform float uSpecK;
-      uniform float uRim;
-      uniform vec3 uEmissive;
-      uniform float uOpacity;
-      uniform sampler2D uMap;
-      ${fogPars}
-      ${lightPars}
-      varying vec3 vN;
-      varying vec3 vW;
-      varying float vDepth;
-      varying vec2 vUv;
-      void main() {
-        vec3 n = normalize(vN);
-        if (!gl_FrontFacing) n = -n;
-        vec3 V = normalize(cameraPosition - vW);
-        vec3 L = normalize(uLightDir);
-        float dif = max(dot(n, L), 0.0);
-        float hemi = 0.5 + 0.5 * n.y;
-        vec3 H = normalize(L + V);
-        float sp = pow(max(dot(n, H), 0.0), uShin);
-        float fr = pow(1.0 - max(dot(n, V), 0.0), 4.0);
-        vec3 base = uColor;
-        vec3 em = uEmissive;
-        #ifdef USE_LITMAP
-          vec4 t = texture2D(uMap, vUv);
-          base = mix(base, t.rgb, t.a);
-          em += t.rgb * t.a * 0.35;
-        #endif
-        vec3 c = base * (0.16 + 0.22 * hemi + 0.8 * dif) + uSpec * sp * uSpecK + uSpec * fr * uRim + em;
-        c += base * neonLight(n, vW) * 1.4;
-        gl_FragColor = vec4(mix(c, uFogColor, fogF(vDepth)), uOpacity);
-      }
-    `,
-  });
-}
-
 /**
  * Cobre con relieve + corriente neón. Cada vértice lleva su distancia a lo largo de la pista (aDist),
  * su posición transversal (aAcross, -1..1) y los datos de la pista (aTrace: largo, semilla, velocidad, viva).
@@ -147,6 +57,8 @@ export function traceMaterial({ periodic = false, flat = false } = {}): ShaderMa
       uBase: { value: 1 },
       uGlow: { value: 1 },
       uFadeIn: { value: 0 },
+      /** (inicio, fin) del desvanecimiento a lo largo de la pista; fin = 0 lo desactiva. */
+      uFadeOut: { value: new Vector3(0, 0, 0) },
     },
     transparent: true,
     side: DoubleSide,
@@ -182,6 +94,8 @@ export function traceMaterial({ periodic = false, flat = false } = {}): ShaderMa
       uniform float uBase;
       uniform float uGlow;
       uniform float uFadeIn;
+      uniform float uFlow;
+      uniform vec3 uFadeOut;
       ${fogPars}
       ${lightPars}
       varying vec3 vN;
@@ -213,12 +127,12 @@ export function traceMaterial({ periodic = false, flat = false } = {}): ShaderMa
         #ifdef PERIODIC
           // Paquetes de datos periódicos (grafo de servicios).
           float spacing = 2.4;
-          float ph = fract((d - uTime * speed) / spacing + seed);
+          float ph = fract((d - uFlow * speed) / spacing + seed);
           float behind = (1.0 - ph) * spacing;
           e = exp(-behind / 0.45) + 0.06;
         #else
           float period = len + 5.0 + seed * 4.0;
-          float head = mod(uTime * speed + seed * 37.0, period);
+          float head = mod(uFlow * speed + seed * 37.0, period);
           float behind = head - d;
           e = behind >= 0.0 ? exp(-behind / (0.9 + len * 0.07)) : exp(behind * 22.0);
           e *= step(d, len + 0.01);
@@ -226,81 +140,8 @@ export function traceMaterial({ periodic = false, flat = false } = {}): ShaderMa
         e *= live * uCurrent;
         vec3 em = uNeon * e * (0.5 + 4.5 * core) * uGlow;
         float alpha = uOpacity * (uFadeIn > 0.0 ? smoothstep(0.0, uFadeIn, vDist) : 1.0);
+        if (uFadeOut.y > 0.0) alpha *= 1.0 - smoothstep(uFadeOut.x, uFadeOut.y, vDist);
         gl_FragColor = vec4(mix(col + em, uFogColor, fogF(vDepth)), alpha);
-      }
-    `,
-  });
-}
-
-/** Máscara de soldadura brillante con serigrafía (canvas) y ruido sutil. */
-export function maskMaterial(silk: Texture, size: { w: number; h: number }): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: {
-      ...shared,
-      uSilk: { value: silk },
-      uMask: { value: C.soldermask },
-      uIvory: { value: C.ivory },
-      uCopper: { value: C.copper },
-      uNeon: { value: C.neon },
-      uSize: { value: new Vector3(size.w, size.h, 0) },
-      uOpacity: { value: 1 },
-    },
-    transparent: true,
-    vertexShader: /* glsl */ `
-      varying vec3 vW;
-      varying vec2 vUv;
-      varying float vDepth;
-      void main() {
-        vec4 w = modelMatrix * vec4(position, 1.0);
-        vW = w.xyz;
-        vUv = uv;
-        vec4 mv = viewMatrix * w;
-        vDepth = -mv.z;
-        gl_Position = projectionMatrix * mv;
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform sampler2D uSilk;
-      uniform vec3 uMask;
-      uniform vec3 uIvory;
-      uniform vec3 uCopper;
-      uniform vec3 uSize;
-      uniform float uOpacity;
-      ${fogPars}
-      ${lightPars}
-      varying vec3 vW;
-      varying vec2 vUv;
-      varying float vDepth;
-      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float noise(vec2 p) {
-        vec2 i = floor(p); vec2 f = fract(p);
-        vec2 u = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
-      }
-      void main() {
-        vec2 p = vW.xz;
-        float nz = noise(p * 6.0) * 0.6 + noise(p * 23.0) * 0.4;
-        vec3 n = normalize(vec3((noise(p * 9.0) - 0.5) * 0.06, 1.0, (noise(p * 9.0 + 7.0) - 0.5) * 0.06));
-        vec3 V = normalize(cameraPosition - vW);
-        vec3 L = normalize(uLightDir);
-        vec3 H = normalize(L + V);
-        float sp = pow(max(dot(n, H), 0.0), 90.0);
-        float broad = pow(max(dot(n, H), 0.0), 8.0);
-        float fr = pow(1.0 - max(dot(n, V), 0.0), 5.0);
-        vec4 silk = texture2D(uSilk, vUv);
-        // Canal R: serigrafía marfil. Canal G: cobre bajo la máscara (planos de tierra). Canal B: retícula.
-        vec3 base = uMask * (0.75 + 0.25 * nz);
-        base = mix(base, mix(uMask, uCopper, 0.32), silk.g * 0.85);
-        base += uIvory * silk.b * 0.05;
-        vec3 c = base * (0.35 + 0.75 * max(dot(n, L), 0.0));
-        c += uIvory * (sp * 0.35 + broad * 0.025 + fr * 0.05);
-        c = mix(c, uIvory * 0.62, silk.r * 0.85);
-        c += uMask * neonLight(n, vW) * 3.2;
-        // Bordes de la placa: se funde con el grafito.
-        vec2 q = abs(vW.xz) / (uSize.xy * 0.5);
-        float edge = 1.0 - smoothstep(0.72, 1.0, max(q.x, q.y));
-        float f = fogF(vDepth);
-        gl_FragColor = vec4(mix(c, uFogColor, max(f, 1.0 - edge)), uOpacity);
       }
     `,
   });
@@ -316,6 +157,8 @@ export function dieMaterial(map: Texture, glow: Texture): ShaderMaterial {
       uNeon: { value: C.neon },
       uFlicker: { value: 0 },
       uHeat: { value: 0 },
+      uBeat: { value: 0 },
+      uFade: { value: 1 },
     },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
@@ -336,6 +179,8 @@ export function dieMaterial(map: Texture, glow: Texture): ShaderMaterial {
       uniform float uTime;
       uniform float uFlicker;
       uniform float uHeat;
+      uniform float uBeat;
+      uniform float uFade;
       uniform float uCurrent;
       uniform vec3 uNeon;
       uniform vec3 uLightDir;
@@ -352,7 +197,7 @@ export function dieMaterial(map: Texture, glow: Texture): ShaderMaterial {
         vec3 c = base * 0.9 + vec3(sp) * 0.25;
         // Barrido diagonal de "reloj" sobre las pistas internas del die.
         float sweep = exp(-pow(fract((vUv.x + vUv.y) * 0.5 - uTime * 0.18) - 0.5, 2.0) * 180.0);
-        float e = g * (0.35 + 1.8 * sweep + 3.0 * uFlicker) * uCurrent;
+        float e = g * (0.35 + 1.8 * sweep + 3.0 * uFlicker + 3.2 * uBeat) * uCurrent;
         c += uNeon * e;
         // Calor del cruce: el die se vuelve luz para atravesarlo.
         // Microdetalle procedural: dos niveles de celdas que aparecen solo cuando se pueden resolver,
@@ -371,7 +216,7 @@ export function dieMaterial(map: Texture, glow: Texture): ShaderMaterial {
         c += base * (l1 * 0.5 + l2 * 0.35);
         // Al entrar se encienden las pistas internas y las celdas (no un velo plano).
         c += uNeon * uHeat * (0.1 + 1.8 * g + l1 * 1.4 + l2 * 0.9 + lit * pulse * 2.2);
-        gl_FragColor = vec4(mix(c, uFogColor, fogF(vDepth)), 1.0);
+        gl_FragColor = vec4(mix(c, uFogColor, fogF(vDepth)) * uFade, 1.0);
       }
     `,
   });
@@ -490,52 +335,6 @@ export function panelMaterial(map: Texture, aspect: number): ShaderMaterial {
 
         float f = fogF(vDepth);
         gl_FragColor = vec4(mix(c, uFogColor, f), a * shape * uOpacity * (1.0 - f));
-      }
-    `,
-  });
-}
-
-/** Suelo lógico (escenas 2-3): retícula fina que se desvanece con la distancia. */
-export function gridMaterial(): ShaderMaterial {
-  return new ShaderMaterial({
-    uniforms: { ...shared, uIvory: { value: C.ivory }, uPcb: { value: C.pcb }, uOpacity: { value: 0 } },
-    transparent: true,
-    depthWrite: false,
-    vertexShader: /* glsl */ `
-      varying vec3 vW;
-      varying float vDepth;
-      void main() {
-        vec4 w = modelMatrix * vec4(position, 1.0);
-        vW = w.xyz;
-        vec4 mv = viewMatrix * w;
-        vDepth = -mv.z;
-        gl_Position = projectionMatrix * mv;
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      uniform vec3 uIvory;
-      uniform vec3 uPcb;
-      uniform float uOpacity;
-      ${fogPars}
-      varying vec3 vW;
-      varying float vDepth;
-      float grid(vec2 p, float s) {
-        vec2 g = abs(fract(p / s - 0.5) - 0.5) / fwidth(p / s);
-        return 1.0 - min(min(g.x, g.y), 1.0);
-      }
-      void main() {
-        vec2 p = vW.xz;
-        float minor = grid(p, 0.5);
-        float major = grid(p, 2.0);
-        float dots = 0.0;
-        vec2 cell = abs(fract(p / 2.0) - 0.5);
-        float r = length(fwidth(p / 2.0));
-        dots = 1.0 - smoothstep(0.0, r * 1.5, length(cell - 0.5) - 0.01);
-        float fade = 1.0 - smoothstep(4.0, 13.0, length(p - vec2(1.5, 0.0)));
-        vec3 c = mix(uIvory, uPcb, 0.25);
-        float a = (minor * 0.045 + major * 0.11 + dots * 0.4) * fade;
-        float f = fogF(vDepth);
-        gl_FragColor = vec4(c, a * uOpacity * (1.0 - f));
       }
     `,
   });

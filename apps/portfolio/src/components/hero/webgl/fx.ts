@@ -8,14 +8,14 @@ import { mulberry32 } from './geometry';
 import { pointsMaterial } from './materials';
 
 /** Polvo marfil suspendido: da profundidad al movimiento de cámara. */
-export function buildDust(count = 520): Points {
+export function buildDust(count = 320): Points {
   const rand = mulberry32(3);
   const pos = new Float32Array(count * 3);
   const life = new Float32Array(count);
   for (let i = 0; i < count; i++) {
-    pos[i * 3] = -12 + rand() * 26;
-    pos[i * 3 + 1] = -10 + rand() * 13;
-    pos[i * 3 + 2] = -8 + rand() * 18;
+    pos[i * 3] = -9 + rand() * 18;
+    pos[i * 3 + 1] = -5 + rand() * 10;
+    pos[i * 3 + 2] = -7 + rand() * 13;
     life[i] = 0.3 + rand() * 0.7;
   }
   const g = new BufferGeometry();
@@ -72,7 +72,7 @@ export class Sparks {
       this.life[i] = Math.max(0, this.life[i] - dt / this.max[i]);
       this.vel[i * 3 + 1] -= 6 * dt;
       this.pos[i * 3] += this.vel[i * 3] * dt;
-      this.pos[i * 3 + 1] = Math.max(0.01, this.pos[i * 3 + 1] + this.vel[i * 3 + 1] * dt);
+      this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
       this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
     }
     const g = this.points.geometry;
@@ -92,6 +92,8 @@ const FinalShader = {
     uTime: { value: 0 },
     uAspect: { value: 1 },
     uExposure: { value: 1.05 },
+    /** Atenuación lateral bajo el titular (1 en escritorio, 0 en móvil vertical). */
+    uSideDim: { value: 1 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -103,6 +105,7 @@ const FinalShader = {
     uniform float uTime;
     uniform float uAspect;
     uniform float uExposure;
+    uniform float uSideDim;
     varying vec2 vUv;
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTime) * 43758.5453); }
     vec3 neutral(vec3 color) {
@@ -133,7 +136,7 @@ const FinalShader = {
       c.b = texture2D(tDiffuse, vUv - off).b;
       c *= 1.0 - smoothstep(0.3, 1.2, r2) * 0.5;
       // Zona del titular: la escena cede contraste a la izquierda.
-      c *= mix(0.42, 1.0, smoothstep(0.08, 0.62, vUv.x));
+      c *= mix(mix(1.0, 0.42, uSideDim), 1.0, smoothstep(0.08, 0.62, vUv.x));
       // Destello del cruce: velo neón contenido (la escena se queda legible si el scroll se detiene aquí).
       c = mix(c, c + vec3(1.0, 0.16, 0.22) * 0.9, uFlash) + vec3(1.0, 0.85, 0.8) * uFlash * uFlash * 0.25;
       c = toSRGB(clamp(neutral(max(c, 0.0)), 0.0, 1.0));

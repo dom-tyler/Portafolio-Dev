@@ -36,9 +36,12 @@ Tipos: Unbounded (títulos, 650–800) e IBM Plex Mono (texto corrido, HUD y dat
 - El evento `hero:motion` (`{ paused }`) y el atributo `data-motion="paused"` para el botón de pausa.
 - En móvil (< 768 px) y con `prefers-reduced-motion` no hay recorrido de scroll y queda el póster.
 
-Escenas: 1 Silicio (placa y chip), 2 Interfaz (paneles de producto), 3 Servicios + IA (nodos API/DB/RAG).
+Escenas: 1 Silicio (el chip vivo), 2 Integración (la mano lo toma), 3 Producto + IA (lo presenta y proyecta capas).
 
 ### Variante WebGL (`src/components/hero/HeroWebGL.astro` + `webgl/`)
-three.js vanilla con shaders propios, cargado por import dinámico tras `load` (entrada ~2 KB gzip; el chunk `stage` con three, ~160 KB gzip, solo en escritorio).
-No monta con < 768 px, `prefers-reduced-motion`, ahorro de datos o sin WebGL2; si el contexto se pierde, vuelve el póster.
-Una sola toma de cámara: placa PCB con corriente → cruce del die → paneles de interfaz → grafo de servicios.
+- **Onboarding**: `BootFlag.astro` (inline en `<head>`) pone `is-booting` antes del primer pintado. El chip se enciende en el centro (contorno → pines de cobre según el progreso real de carga → pistas → latido del die), vuela hasta el hero y el titular entra decodificándose. Mínimo ~1.5 s, versión corta en revisitas (`sessionStorage`), botón "Saltar", clic o Esc para saltar; si pasa de 6 s sigue el póster. Con reduced-motion, fundido breve sin escena.
+- **Chip** (`chip.ts`): QFP con biseles y marcado láser, 64 pines instanciados con emisión por pin, die con shader emisivo, hilos de unión y abanico de pistas con corriente. Late de forma irregular, se inclina hacia el cursor con un resorte, lanza un arco desde el pin más cercano, acelera la corriente en hover y entra en sobrecarga con el clic.
+- **Mano** (`hand.ts`): procedural, una articulación por `Object3D`; entra desde abajo a la derecha, cierra los dedos, levanta el chip y lo presenta. **Capas** (`holo.ts`): Interfaz · API · Datos · IA.
+- **Rendimiento**: three.js por import dinámico (entrada ~2.7 KB gzip; chunk `stage` ~160 KB gzip). DPR ≤ 1.75 y tiers por FPS medidos (T1 al 75 % de resolución; T2 al 60 %, sin bloom y a 30 fps). Bucle pausado fuera de vista, con la pestaña oculta o con el botón de pausa.
+- **Móvil**: solo el chip (sin mano ni bloom, DPR 1) si `hardwareConcurrency >= 4` y sin ahorro de datos; si no, póster. Sin WebGL2 o si se pierde el contexto, vuelve el póster.
+- **Siguiente paso (fase B, sin implementar)**: después del hero, la mano con el chip persiste en un canvas fijo y discreto; al pasar sobre una tarjeta de proyecto se encienden en el chip las capas de ese proyecto (`layers` de `packages/content-schema`).

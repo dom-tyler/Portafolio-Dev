@@ -1,0 +1,296 @@
+---
+import type { GetStaticPaths } from 'astro';
+import type { Project } from '@portfolio/content-schema';
+import Base from '../../layouts/Base.astro';
+import LayerDiagram from '../../components/LayerDiagram.astro';
+import { projects } from '../../content/projects';
+import { statusLabel, domainLabel } from '../../lib/labels';
+
+export const getStaticPaths = (() =>
+  projects.map((project, i) => ({
+    params: { slug: project.slug },
+    props: { project, next: projects[(i + 1) % projects.length] },
+  }))) satisfies GetStaticPaths;
+
+interface Props {
+  project: Project;
+  next: Project;
+}
+
+const { project: p, next } = Astro.props;
+---
+
+<Base title={p.title} description={p.tagline}>
+  <article class="shell page">
+    <nav class="hud crumbs" aria-label="Ruta">
+      <a href="/proyectos" class="link-copper">Proyectos</a>
+      <span class="text-faint">/</span>
+      <span aria-current="page">{p.title}</span>
+    </nav>
+
+    <header class="head">
+      <div class="head-main">
+        <p class="hud meta">
+          <span
+            class:list={['led', { 'led--neon': p.status === 'en-desarrollo' }]}
+            style={p.status === 'caso-privado' || p.status === 'academico' ? 'background:var(--c-copper);box-shadow:none' : undefined}
+            aria-hidden="true"></span>
+          {statusLabel[p.status]} · {p.context}
+        </p>
+        <h1 class="display">{p.title}</h1>
+        <p class="tagline">{p.tagline}</p>
+      </div>
+      <dl class="facts frame">
+        <div>
+          <dt class="hud">Rol</dt>
+          <dd>{p.role}</dd>
+        </div>
+        <div>
+          <dt class="hud">Periodo</dt>
+          <dd>{p.period}</dd>
+        </div>
+        <div>
+          <dt class="hud">Dominios</dt>
+          <dd>{p.domains.map((d) => domainLabel[d]).join(' · ')}</dd>
+        </div>
+        {
+          (p.links.site || p.links.repo) && (
+            <div>
+              <dt class="hud">Enlaces</dt>
+              <dd class="links">
+                {p.links.site && (
+                  <a href={p.links.site} class="link-copper" target="_blank" rel="noopener noreferrer">
+                    Sitio ↗
+                  </a>
+                )}
+                {p.links.repo && (
+                  <a href={p.links.repo} class="link-copper" target="_blank" rel="noopener noreferrer">
+                    Repositorio ↗
+                  </a>
+                )}
+              </dd>
+            </div>
+          )
+        }
+      </dl>
+    </header>
+
+    <div class="body">
+      <aside class="side">
+        <div class="frame panel">
+          <p class="hud text-copper panel-title">Capas del sistema</p>
+          <LayerDiagram layers={p.layers} size="lg" />
+        </div>
+        <div class="frame panel">
+          <p class="hud text-copper panel-title">Stack</p>
+          <ul class="stack">
+            {p.stack.map((s) => <li class="hud">{s}</li>)}
+          </ul>
+        </div>
+      </aside>
+
+      <div class="content">
+        <section>
+          <h2 class="hud h">Resumen</h2>
+          <p class="lead">{p.summary}</p>
+        </section>
+
+        {
+          p.problem && (
+            <section>
+              <h2 class="hud h">Problema</h2>
+              <p>{p.problem}</p>
+            </section>
+          )
+        }
+
+        <section>
+          <h2 class="hud h">Aporte</h2>
+          <ol class="list">
+            {p.contribution.map((c, i) => (
+              <li>
+                <span class="hud n">{String(i + 1).padStart(2, '0')}</span>
+                <span>{c}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {
+          p.decisions.length > 0 && (
+            <section>
+              <h2 class="hud h">Decisiones</h2>
+              <div class="decisions">
+                {p.decisions.map((d) => (
+                  <div class="decision frame">
+                    <h3>{d.title}</h3>
+                    <p>{d.body}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )
+        }
+      </div>
+    </div>
+
+    <a href={`/proyectos/${next.slug}`} class="next">
+      <span class="hud text-faint">Siguiente caso</span>
+      <span class="next-title">{next.title} <span class="arrow" aria-hidden="true">→</span></span>
+    </a>
+  </article>
+</Base>
+
+<style>
+  .page {
+    padding-top: 6.5rem;
+    padding-bottom: 5rem;
+  }
+  .crumbs {
+    display: flex;
+    gap: 0.6rem;
+    color: var(--c-muted);
+  }
+  .head {
+    display: grid;
+    gap: 2.5rem;
+    padding: 3.5rem 0 3rem;
+    border-bottom: 1px solid var(--c-line);
+  }
+  @media (min-width: 1024px) {
+    .head {
+      grid-template-columns: 1.6fr 1fr;
+      align-items: end;
+    }
+  }
+  .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--c-muted);
+    margin-bottom: 1.25rem;
+  }
+  .tagline {
+    margin-top: 1.25rem;
+    font-size: clamp(1.125rem, 1.8vw, 1.375rem);
+    color: var(--c-muted);
+    max-width: 40ch;
+  }
+  .facts {
+    display: grid;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+  .facts dt {
+    color: var(--c-faint);
+    margin-bottom: 0.25rem;
+  }
+  .links {
+    display: flex;
+    gap: 1.25rem;
+  }
+  .body {
+    display: grid;
+    gap: 3rem;
+    padding-top: 3rem;
+  }
+  @media (min-width: 1024px) {
+    .body {
+      grid-template-columns: 22rem 1fr;
+      gap: 4rem;
+    }
+    .side {
+      position: sticky;
+      top: 6rem;
+      align-self: start;
+    }
+  }
+  .side {
+    display: grid;
+    gap: 1rem;
+  }
+  .panel {
+    padding: 1.25rem;
+  }
+  .panel-title {
+    margin-bottom: 1rem;
+  }
+  .stack {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    color: var(--c-muted);
+  }
+  .content {
+    display: grid;
+    gap: 3rem;
+    max-width: 68ch;
+  }
+  .h {
+    color: var(--c-copper);
+    margin-bottom: 1rem;
+  }
+  .lead {
+    font-size: clamp(1.125rem, 1.6vw, 1.3rem);
+    line-height: 1.5;
+  }
+  .content p {
+    color: var(--c-muted);
+  }
+  .content .lead {
+    color: var(--c-ivory);
+  }
+  .list {
+    list-style: none;
+    display: grid;
+    border-top: 1px solid var(--c-line);
+  }
+  .list li {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr;
+    gap: 0.5rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--c-line);
+  }
+  .n {
+    color: var(--c-neon);
+    padding-top: 0.2rem;
+  }
+  .decisions {
+    display: grid;
+    gap: 1rem;
+  }
+  .decision {
+    padding: 1.25rem 1.5rem;
+  }
+  .decision h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+  }
+  .next {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 5rem;
+    padding: 2.5rem 0;
+    border-top: 1px solid var(--c-line);
+  }
+  .next-title {
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    transition: color 0.3s;
+  }
+  .next:hover .next-title {
+    color: var(--c-neon);
+  }
+  .next .arrow {
+    display: inline-block;
+    transition: transform 0.3s var(--ease-out);
+  }
+  .next:hover .arrow {
+    transform: translateX(8px);
+  }
+</style>

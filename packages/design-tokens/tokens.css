@@ -1,0 +1,29 @@
+/* Tokens de diseño · Cyberpunk sobrio: grafito, corriente neón, verde PCB, cobre. */
+:root {
+  --c-graphite: #07090a;
+  --c-ivory: #ece6d9;
+  --c-neon: #ff2a44;
+  --c-copper: #d4823f;
+  --c-pcb: #1db46e;
+
+  /* Derivados (sin colores nuevos: mezclas de los 5 base) */
+  --c-surface: color-mix(in oklab, var(--c-graphite) 92%, var(--c-ivory));
+  --c-soldermask: color-mix(in oklab, var(--c-graphite) 82%, var(--c-pcb));
+  --c-line: color-mix(in oklab, var(--c-ivory) 14%, transparent);
+  --c-line-strong: color-mix(in oklab, var(--c-ivory) 28%, transparent);
+  --c-muted: color-mix(in oklab, var(--c-ivory) 62%, var(--c-graphite));
+  --c-faint: color-mix(in oklab, var(--c-ivory) 38%, var(--c-graphite));
+
+  --glow-sm: 0 0 8px color-mix(in oklab, var(--c-neon) 60%, transparent);
+  --glow-md: 0 0 24px color-mix(in oklab, var(--c-neon) 45%, transparent),
+    0 0 2px var(--c-neon);
+
+  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --gutter: clamp(16px, 4vw, 48px);
+  --maxw: 1320px;
+}

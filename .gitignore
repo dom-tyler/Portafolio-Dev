@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.astro/
+.next/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.claude/state/
+.claude/settings.local.json
+.firebase/
+
+# Credenciales de servicio: nunca al repositorio
+*firebase-adminsdk*.json
+service-account*.json
+
+# Documento de planeación privado (notas sobre CV y validaciones)
+Portafolio_Daniel_Osorio.md

@@ -1,0 +1,83 @@
+---
+import { site } from '../../content/site';
+
+const channels = [
+  site.contact.email && { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
+  site.contact.linkedin && { label: 'LinkedIn', value: 'Perfil profesional', href: site.contact.linkedin },
+  { label: 'GitHub', value: '@AresHidalgo', href: site.contact.github },
+].filter(Boolean) as { label: string; value: string; href: string }[];
+---
+
+<section id="contacto" class="contact" aria-labelledby="contacto-title">
+  <div class="shell">
+    <div class="section-head" data-reveal>
+      <p class="hud hud-bracket text-copper">05 · Contacto</p>
+      <h2 id="contacto-title" class="display">
+        Conectemos<br /><span class="text-faint">el siguiente sistema.</span>
+      </h2>
+    </div>
+
+    <ul class="channels" data-reveal>
+      {
+        channels.map((c) => (
+          <li>
+            <a href={c.href} class="channel" target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer">
+              <span class="hud text-faint">{c.label}</span>
+              <span class="channel-value">{c.value}</span>
+              <span class="hud channel-go" aria-hidden="true">
+                ↗
+              </span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="hud status" data-reveal>
+      <span class="led" aria-hidden="true"></span>
+      {site.location} · Disponible para proyectos y equipos de producto
+    </p>
+  </div>
+</section>
+
+<style>
+  .contact {
+    padding-bottom: clamp(4rem, 8vw, 7rem);
+  }
+  .channels {
+    list-style: none;
+    border-top: 1px solid var(--c-line);
+  }
+  .channel {
+    display: grid;
+    grid-template-columns: 6rem 1fr auto;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--c-line);
+    transition: padding-left 0.4s var(--ease-out);
+  }
+  .channel:hover {
+    padding-left: 0.75rem;
+  }
+  .channel-value {
+    font-size: clamp(1.25rem, 2.6vw, 2rem);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    transition: color 0.3s;
+  }
+  .channel:hover .channel-value {
+    color: var(--c-neon);
+  }
+  .channel-go {
+    color: var(--c-faint);
+    font-size: 1rem;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 2rem;
+    color: var(--c-muted);
+  }
+</style>

@@ -1,0 +1,365 @@
+---
+/**
+ * Hero de tres escenas: Silicio -> Interfaz -> Servicios + IA.
+ *
+ * CONTRATO PARA LAS VARIANTES (WebGL / video):
+ * - Reemplazar el slot `media` con la escena. Debe ocupar el contenedor [data-hero-media]
+ *   (position:absolute; inset:0) y montarse después del contenido (sin bloquear el LCP).
+ * - Leer el progreso desde el evento `hero:progress` en window:
+ *     detail = { progress: 0..1, scene: 1|2|3, sceneProgress: 0..1 }
+ *   o desde la variable CSS --hero-p en [data-hero].
+ * - Si la escena carga, añadir la clase `is-media-ready` a [data-hero] para ocultar el póster.
+ * - Respetar [data-hero][data-motion="paused"] (botón de pausa) y prefers-reduced-motion.
+ * - Con menos de 768px el hero no tiene recorrido de scroll: póster liviano.
+ */
+import CircuitPoster from './CircuitPoster.astro';
+import { site } from '../../content/site';
+
+const scenes = [
+  { id: 1, code: 'L0', title: 'Silicio', body: 'Algoritmos en C y electrónica digital. Donde empezó todo.' },
+  { id: 2, code: 'L1', title: 'Interfaz', body: 'Productos comerciales: catálogos, filtros, pagos y experiencia.' },
+  { id: 3, code: 'L2', title: 'Servicios + IA', body: 'APIs, datos, integraciones y recuperación con modelos de lenguaje.' },
+];
+---
+
+<section id="inicio" class="hero" data-hero data-scene="1" aria-labelledby="hero-title">
+  <div class="hero-viewport">
+    <div class="hero-media" data-hero-media>
+      <div class="hero-poster"><CircuitPoster /></div>
+      <slot name="media" />
+    </div>
+
+    <div class="hero-scrim" aria-hidden="true"></div>
+
+    <!-- HUD de esquinas -->
+    <div class="hud-layer" aria-hidden="true">
+      <span class="hud corner tl">6.2442° N · 75.5812° W</span>
+      <span class="hud corner tr"><span class="led led--neon"></span> SYS.ONLINE</span>
+      <span class="hud corner bl-hint">Scroll <span class="tick">▼</span></span>
+    </div>
+
+    <div class="shell hero-grid">
+      <div class="hero-copy">
+        <p class="hud kicker">
+          <span class="text-neon">//</span>
+          {site.name} — {site.role} · {site.location}
+        </p>
+        <h1 id="hero-title" class="display headline">
+          Diseño sistemas de software,
+          <span class="headline-2">de la arquitectura al producto.</span>
+        </h1>
+        <p class="subline">{site.subline}</p>
+        <div class="ctas">
+          <a href="/proyectos" class="btn btn--primary">Ver proyectos <span class="arrow" aria-hidden="true">→</span></a>
+          <a href="#contacto" class="btn">Contacto</a>
+        </div>
+      </div>
+
+      <ol class="scene-list" aria-label="Capas de la trayectoria">
+        {
+          scenes.map((s) => (
+            <li class="scene-item" data-scene-item={s.id}>
+              <span class="hud scene-code">
+                {String(s.id).padStart(2, '0')} / {s.code}
+              </span>
+              <span class="scene-title">{s.title}</span>
+              <span class="scene-body">{s.body}</span>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+
+    <div class="hero-progress" aria-hidden="true">
+      <div class="hero-progress-bar"></div>
+    </div>
+
+    <button type="button" class="hud motion-toggle" data-motion-toggle aria-pressed="false">
+      <span data-motion-label>Pausar movimiento</span>
+    </button>
+  </div>
+</section>
+
+<style>
+  .hero {
+    --hero-p: 0;
+    position: relative;
+    height: var(--hero-track, 320vh);
+  }
+  .hero-viewport {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    min-height: 560px;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+  }
+  .hero-poster {
+    position: absolute;
+    inset: 0;
+    transition: opacity 1.2s var(--ease-out);
+  }
+  .hero.is-media-ready .hero-poster {
+    opacity: 0;
+  }
+  .hero-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, color-mix(in oklab, var(--c-graphite) 88%, transparent) 0%, transparent 58%),
+      linear-gradient(0deg, var(--c-graphite) 0%, transparent 28%);
+  }
+
+  .hud-layer .corner {
+    position: absolute;
+    color: var(--c-faint);
+  }
+  .tl {
+    top: 84px;
+    left: var(--gutter);
+  }
+  .tr {
+    top: 84px;
+    right: var(--gutter);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--c-muted) !important;
+  }
+  .bl-hint {
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .tick {
+    display: inline-block;
+    color: var(--c-neon);
+    animation: nudge 1.8s var(--ease-in-out) infinite;
+  }
+  @keyframes nudge {
+    50% {
+      transform: translateY(3px);
+    }
+  }
+
+  .hero-grid {
+    position: relative;
+    height: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: end;
+    gap: 2.5rem;
+    padding-bottom: clamp(5rem, 11vh, 7.5rem);
+  }
+  @media (min-width: 1200px) {
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 0.62fr);
+      align-items: end;
+    }
+  }
+
+  .kicker {
+    color: var(--c-muted);
+    margin-bottom: 1.5rem;
+  }
+  .headline {
+    max-width: 14ch;
+  }
+  .headline-2 {
+    display: block;
+    color: var(--c-faint);
+  }
+  .subline {
+    margin-top: 1.5rem;
+    max-width: 46ch;
+    color: var(--c-muted);
+    font-size: clamp(1rem, 1.3vw, 1.125rem);
+  }
+  .ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .scene-list {
+    display: none;
+    list-style: none;
+    padding: 0.5rem 1.25rem 0.5rem 0;
+    border-left: 1px solid var(--c-line);
+    background: color-mix(in oklab, var(--c-graphite) 72%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  @media (min-width: 1200px) {
+    .scene-list {
+      display: grid;
+    }
+  }
+  .scene-item {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto auto 0fr;
+    gap: 0.25rem;
+    padding: 0.75rem 0 0.75rem 1.25rem;
+    opacity: 0.38;
+    transition:
+      opacity 0.5s var(--ease-out),
+      grid-template-rows 0.5s var(--ease-out);
+  }
+  .scene-body {
+    overflow: hidden;
+    min-height: 0;
+  }
+  .hero[data-scene='1'] [data-scene-item='1'],
+  .hero[data-scene='2'] [data-scene-item='2'],
+  .hero[data-scene='3'] [data-scene-item='3'] {
+    grid-template-rows: auto auto 1fr;
+  }
+  .scene-item::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 0.9rem;
+    bottom: 0.9rem;
+    width: 1px;
+    background: var(--c-neon);
+    box-shadow: var(--glow-sm);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.5s var(--ease-out);
+  }
+  .scene-code {
+    color: var(--c-copper);
+  }
+  .scene-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .scene-body {
+    font-size: 0.875rem;
+    color: var(--c-muted);
+    max-width: 30ch;
+  }
+  .hero[data-scene='1'] [data-scene-item='1'],
+  .hero[data-scene='2'] [data-scene-item='2'],
+  .hero[data-scene='3'] [data-scene-item='3'] {
+    opacity: 1;
+  }
+  .hero[data-scene='1'] [data-scene-item='1']::before,
+  .hero[data-scene='2'] [data-scene-item='2']::before,
+  .hero[data-scene='3'] [data-scene-item='3']::before {
+    transform: scaleY(1);
+  }
+
+  .hero-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: var(--c-line);
+  }
+  .hero-progress-bar {
+    height: 100%;
+    background: var(--c-neon);
+    box-shadow: var(--glow-sm);
+    transform: scaleX(var(--hero-p));
+    transform-origin: left;
+  }
+
+  .motion-toggle {
+    position: absolute;
+    right: var(--gutter);
+    bottom: 22px;
+    padding: 0.5rem 0;
+    color: var(--c-faint);
+    transition: color 0.2s;
+  }
+  .motion-toggle:hover {
+    color: var(--c-ivory);
+  }
+  .hero[data-motion='paused'] :global(*) {
+    animation-play-state: paused !important;
+  }
+
+  /* Móvil: sin recorrido de scroll; póster liviano. */
+  @media (max-width: 767px) {
+    .hero {
+      --hero-track: 100svh;
+    }
+    .hero-scrim {
+      background: linear-gradient(0deg, var(--c-graphite) 8%, color-mix(in oklab, var(--c-graphite) 55%, transparent) 60%, transparent 100%);
+    }
+    .tl,
+    .bl-hint {
+      display: none;
+    }
+    .hero-grid {
+      padding-bottom: 4.5rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero {
+      --hero-track: 100svh;
+    }
+    .bl-hint {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  if (hero) {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let ticking = false;
+    let lastScene = 1;
+
+    const update = () => {
+      ticking = false;
+      const rect = hero.getBoundingClientRect();
+      const track = hero.offsetHeight - window.innerHeight;
+      const progress = track > 0 ? Math.min(1, Math.max(0, -rect.top / track)) : 0;
+      const scaled = progress * 3;
+      const scene = Math.min(3, Math.floor(scaled) + 1) as 1 | 2 | 3;
+      const sceneProgress = scene === 3 ? Math.min(1, scaled - 2) : scaled - (scene - 1);
+
+      hero.style.setProperty('--hero-p', progress.toFixed(4));
+      if (scene !== lastScene) {
+        hero.dataset.scene = String(scene);
+        lastScene = scene;
+      }
+      window.dispatchEvent(new CustomEvent('hero:progress', { detail: { progress, scene, sceneProgress } }));
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+
+    // Pausa de movimiento (también disponible para las variantes vía data-motion)
+    const toggle = hero.querySelector<HTMLButtonElement>('[data-motion-toggle]');
+    const label = hero.querySelector<HTMLElement>('[data-motion-label]');
+    const setPaused = (paused: boolean) => {
+      hero.dataset.motion = paused ? 'paused' : 'running';
+      toggle?.setAttribute('aria-pressed', String(paused));
+      if (label) label.textContent = paused ? 'Reanudar movimiento' : 'Pausar movimiento';
+      window.dispatchEvent(new CustomEvent('hero:motion', { detail: { paused } }));
+    };
+    setPaused(reduced.matches);
+    toggle?.addEventListener('click', () => setPaused(hero.dataset.motion !== 'paused'));
+  }
+</script>

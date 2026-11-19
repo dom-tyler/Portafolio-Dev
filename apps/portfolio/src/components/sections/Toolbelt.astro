@@ -1,0 +1,67 @@
+---
+import { toolbelt } from '../../content/experience';
+---
+
+<section aria-labelledby="stack-title">
+  <div class="shell">
+    <div class="section-head" data-reveal>
+      <p class="hud hud-bracket text-copper">04 · Stack</p>
+      <h2 id="stack-title" class="title-lg">Herramientas por capa</h2>
+    </div>
+
+    <div class="board frame" data-reveal>
+      {
+        toolbelt.map((t, i) => (
+          <div class="cell">
+            <p class="hud cell-head">
+              <span class="text-faint">{String(i).padStart(2, '0')}</span> {t.layer}
+            </p>
+            <ul>
+              {t.items.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .board {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (min-width: 768px) {
+    .board {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .cell {
+    padding: 1.25rem;
+    border-right: 1px solid var(--c-line);
+    border-bottom: 1px solid var(--c-line);
+    transition: background-color 0.3s;
+  }
+  .cell:hover {
+    background: var(--c-soldermask);
+  }
+  .cell-head {
+    color: var(--c-copper);
+    margin-bottom: 0.9rem;
+  }
+  ul {
+    list-style: none;
+    display: grid;
+    gap: 0.3rem;
+    font-size: 0.9375rem;
+    color: var(--c-muted);
+  }
+  .cell:hover li {
+    color: var(--c-ivory);
+  }
+  li {
+    transition: color 0.3s;
+  }
+</style>

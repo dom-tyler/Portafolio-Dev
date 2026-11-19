@@ -1,0 +1,78 @@
+---
+import ProjectCard from '../ProjectCard.astro';
+import { featured, lab } from '../../content/projects';
+---
+
+<section id="proyectos" aria-labelledby="proyectos-title">
+  <div class="shell">
+    <div class="section-head" data-reveal>
+      <p class="hud hud-bracket text-copper">01 · Proyectos</p>
+      <div class="head-row">
+        <h2 id="proyectos-title" class="title-lg">Casos seleccionados</h2>
+        <p class="lede">
+          Frontend comercial, integraciones de pagos y mensajería, IA aplicada y fundamentos de lenguajes. Cada caso
+          muestra el problema, mi rol y las decisiones que tomé.
+        </p>
+      </div>
+    </div>
+
+    <div class="grid-featured">
+      {featured.map((p, i) => <ProjectCard project={p} index={i} />)}
+    </div>
+
+    <div class="more" data-reveal>
+      <p class="hud text-faint">+ {lab.length} proyectos en laboratorio</p>
+      <a href="/proyectos" class="btn">Ver todo el catálogo <span class="arrow" aria-hidden="true">→</span></a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .head-row {
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (min-width: 900px) {
+    .head-row {
+      grid-template-columns: 1fr 1fr;
+      align-items: end;
+    }
+  }
+  .lede {
+    color: var(--c-muted);
+    max-width: 52ch;
+  }
+  .grid-featured {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 900px) {
+    .grid-featured {
+      grid-template-columns: repeat(12, 1fr);
+    }
+    /* Ritmo asimétrico: 7/5, 5/7 */
+    .grid-featured > :global(:nth-child(1)) {
+      grid-column: span 7;
+      min-height: 30rem;
+    }
+    .grid-featured > :global(:nth-child(2)) {
+      grid-column: span 5;
+    }
+    .grid-featured > :global(:nth-child(3)) {
+      grid-column: span 5;
+    }
+    .grid-featured > :global(:nth-child(4)) {
+      grid-column: span 7;
+    }
+  }
+  .more {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--c-line);
+  }
+</style>

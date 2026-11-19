@@ -1,0 +1,160 @@
+---
+import Base from '../../layouts/Base.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { projects, featured, lab } from '../../content/projects';
+import { domainLabel } from '../../lib/labels';
+
+const domains = [...new Set(projects.flatMap((p) => p.domains))];
+---
+
+<Base title="Proyectos" description="Catálogo de proyectos de Daniel Osorio: casos destacados y laboratorio.">
+  <div class="shell page">
+    <header class="section-head">
+      <p class="hud hud-bracket text-copper">Catálogo</p>
+      <h1 class="display">Proyectos</h1>
+      <p class="lede">
+        {featured.length} casos destacados y {lab.length} piezas de laboratorio. Filtra por el tipo de problema.
+      </p>
+    </header>
+
+    <div class="filters" role="group" aria-label="Filtrar por dominio" data-filters>
+      <button type="button" class="hud filter is-active" data-filter="todos" aria-pressed="true">Todos</button>
+      {
+        domains.map((d) => (
+          <button type="button" class="hud filter" data-filter={d} aria-pressed="false">
+            {domainLabel[d]}
+          </button>
+        ))
+      }
+    </div>
+
+    <h2 class="hud group-title">Destacados</h2>
+    <div class="grid" data-grid>
+      {
+        featured.map((p, i) => (
+          <div data-domains={p.domains.join(' ')}>
+            <ProjectCard project={p} index={i} />
+          </div>
+        ))
+      }
+    </div>
+
+    <h2 class="hud group-title">Laboratorio</h2>
+    <div class="grid grid--lab" data-grid>
+      {
+        lab.map((p, i) => (
+          <div data-domains={p.domains.join(' ')}>
+            <ProjectCard project={p} index={featured.length + i} variant="compact" />
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="empty frame" data-empty hidden>
+      <p class="hud text-copper">Sin señal</p>
+      <p>No hay casos en esta categoría todavía.</p>
+      <button type="button" class="btn" data-reset>Ver todos</button>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .page {
+    padding-top: 4rem;
+    padding-bottom: 6rem;
+  }
+  .lede {
+    color: var(--c-muted);
+    max-width: 52ch;
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 3rem;
+  }
+  .filter {
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--c-line);
+    color: var(--c-muted);
+    transition:
+      border-color 0.2s,
+      color 0.2s,
+      background-color 0.2s;
+  }
+  .filter:hover {
+    color: var(--c-ivory);
+    border-color: var(--c-line-strong);
+  }
+  .filter.is-active {
+    color: var(--c-graphite);
+    background: var(--c-ivory);
+    border-color: var(--c-ivory);
+  }
+  .group-title {
+    color: var(--c-faint);
+    margin: 0 0 1rem;
+  }
+  .group-title:not(:first-of-type) {
+    margin-top: 3.5rem;
+  }
+  .grid {
+    display: grid;
+    gap: 1rem;
+  }
+  .grid > div {
+    display: grid;
+  }
+  @media (min-width: 768px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 1100px) {
+    .grid--lab {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .empty {
+    display: grid;
+    justify-items: start;
+    gap: 0.75rem;
+    padding: 2rem;
+    margin-top: 2rem;
+    color: var(--c-muted);
+  }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-filters]');
+  const items = document.querySelectorAll<HTMLElement>('[data-domains]');
+  const groups = document.querySelectorAll<HTMLElement>('[data-grid]');
+  const empty = document.querySelector<HTMLElement>('[data-empty]');
+
+  const apply = (filter: string) => {
+    let visible = 0;
+    items.forEach((el) => {
+      const show = filter === 'todos' || (el.dataset.domains ?? '').split(' ').includes(filter);
+      el.hidden = !show;
+      if (show) visible++;
+    });
+    groups.forEach((g) => {
+      const any = [...g.children].some((c) => !(c as HTMLElement).hidden);
+      g.hidden = !any;
+      const title = g.previousElementSibling as HTMLElement | null;
+      if (title?.classList.contains('group-title')) title.hidden = !any;
+    });
+    if (empty) empty.hidden = visible > 0;
+    root?.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((b) => {
+      const on = b.dataset.filter === filter;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  };
+
+  root?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-filter]');
+    if (btn?.dataset.filter) apply(btn.dataset.filter);
+  });
+  document.querySelector('[data-reset]')?.addEventListener('click', () => apply('todos'));
+</script>

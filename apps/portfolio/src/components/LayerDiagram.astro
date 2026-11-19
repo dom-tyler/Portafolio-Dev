@@ -1,0 +1,95 @@
+---
+/**
+ * Diagrama de capas del sistema: muestra qué capas toca un caso.
+ * Sustituye capturas cuando el proyecto es privado.
+ */
+import type { LayerName } from '@portfolio/content-schema';
+
+interface Props {
+  layers: LayerName[];
+  size?: 'sm' | 'lg';
+}
+
+const ALL: { id: LayerName; label: string }[] = [
+  { id: 'interfaz', label: 'Interfaz' },
+  { id: 'api', label: 'API' },
+  { id: 'datos', label: 'Datos' },
+  { id: 'integraciones', label: 'Integraciones' },
+  { id: 'ia', label: 'IA' },
+  { id: 'infraestructura', label: 'Infra' },
+];
+
+const { layers, size = 'sm' } = Astro.props;
+const active = new Set(layers);
+---
+
+<ul class:list={['layers', `layers--${size}`]} aria-label={`Capas: ${layers.join(', ')}`}>
+  {
+    ALL.map((l, i) => (
+      <li class:list={['layer', { 'is-on': active.has(l.id) }]} style={`--i:${i}`}>
+        <span class="hud layer-label">{l.label}</span>
+        <span class="layer-bar" aria-hidden="true">
+          <span class="layer-node" />
+        </span>
+      </li>
+    ))
+  }
+</ul>
+
+<style>
+  .layers {
+    list-style: none;
+    display: grid;
+    gap: 6px;
+  }
+  .layer {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .layers--sm .layer {
+    grid-template-columns: 5.5rem 1fr;
+    gap: 0.5rem;
+  }
+  .layers--sm .layer-label {
+    font-size: 0.625rem;
+  }
+  .layer-label {
+    color: var(--c-faint);
+    transition: color 0.3s;
+  }
+  .layer-bar {
+    position: relative;
+    height: 1px;
+    background: var(--c-line);
+  }
+  .layer-bar {
+    background-image: repeating-linear-gradient(90deg, var(--c-line) 0 4px, transparent 4px 8px);
+    background-color: transparent !important;
+  }
+  .layer.is-on .layer-bar {
+    background-image: none;
+  }
+  .layer-node {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    translate: 0 -50%;
+    width: 7px;
+    height: 7px;
+    border: 1px solid var(--c-faint);
+    background: var(--c-graphite);
+  }
+  .layer.is-on .layer-label {
+    color: var(--c-ivory);
+  }
+  .layer.is-on .layer-bar {
+    background: linear-gradient(90deg, var(--c-copper), color-mix(in oklab, var(--c-copper) 20%, transparent));
+  }
+  .layer.is-on .layer-node {
+    border-color: var(--c-neon);
+    background: var(--c-neon);
+    box-shadow: var(--glow-sm);
+  }
+</style>

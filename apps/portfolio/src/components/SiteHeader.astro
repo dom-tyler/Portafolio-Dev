@@ -1,0 +1,124 @@
+---
+import { site } from '../content/site';
+
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/proyectos', label: 'Proyectos', match: '/proyectos' },
+  { href: '/#experiencia', label: 'Experiencia', match: null },
+  { href: '/#contacto', label: 'Contacto', match: null },
+];
+---
+
+<header class="site-header fixed inset-x-0 top-0 z-50" data-header>
+  <div class="shell flex h-16 items-center justify-between gap-6">
+    <a href="/" class="group flex items-center gap-3" aria-label={`${site.name}, inicio`}>
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22">
+          <rect x="4.5" y="4.5" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1"></rect>
+          <rect x="9" y="9" width="6" height="6" fill="var(--c-neon)"></rect>
+          <path d="M12 0v4.5M12 19.5V24M0 12h4.5M19.5 12H24" stroke="var(--c-copper)" stroke-width="1"></path>
+        </svg>
+      </span>
+      <span class="hud brand-text text-ivory">
+        D.Osorio<span class="text-faint">/dev</span>
+      </span>
+    </a>
+
+    <nav aria-label="Principal">
+      <ul class="flex items-center gap-1 sm:gap-2">
+        {
+          nav.map((item) => {
+            const active = item.match !== null && path.startsWith(item.match);
+            return (
+              <li>
+                <a
+                  href={item.href}
+                  class:list={['nav-link hud', { 'is-active': active }]}
+                  aria-current={active ? 'page' : undefined}
+                >
+                  {item.label}
+                </a>
+              </li>
+            );
+          })
+        }
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    transition:
+      background-color 0.4s var(--ease-out),
+      border-color 0.4s var(--ease-out),
+      backdrop-filter 0.4s var(--ease-out);
+    border-bottom: 1px solid transparent;
+  }
+  .site-header.is-scrolled {
+    background: color-mix(in oklab, var(--c-graphite) 78%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom-color: var(--c-line);
+  }
+  .mark {
+    color: var(--c-ivory);
+    transition: transform 0.6s var(--ease-out);
+  }
+  a:hover .mark {
+    transform: rotate(90deg);
+  }
+  .nav-link {
+    position: relative;
+    display: inline-block;
+    padding: 0.6rem 0.65rem;
+    color: var(--c-muted);
+    transition: color 0.2s;
+  }
+  .nav-link:hover,
+  .nav-link.is-active {
+    color: var(--c-ivory);
+  }
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    left: 0.65rem;
+    right: 0.65rem;
+    bottom: 0.35rem;
+    height: 1px;
+    background: var(--c-neon);
+    box-shadow: var(--glow-sm);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s var(--ease-out);
+  }
+  .nav-link:hover::after,
+  .nav-link.is-active::after {
+    transform: scaleX(1);
+  }
+  /* En pantallas muy angostas se conserva solo el isotipo. */
+  @media (max-width: 420px) {
+    .brand-text {
+      display: none;
+    }
+  }
+  @media (max-width: 480px) {
+    .nav-link {
+      padding-inline: 0.45rem;
+      font-size: 0.625rem;
+      letter-spacing: 0.1em;
+    }
+    .nav-link::after {
+      left: 0.45rem;
+      right: 0.45rem;
+    }
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  if (header) {
+    const update = () => header.classList.toggle('is-scrolled', window.scrollY > 24);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+  }
+</script>

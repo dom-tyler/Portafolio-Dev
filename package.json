@@ -1,0 +1,11 @@
+{
+  "name": "daniel-osorio-portfolio",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm --filter @portfolio/web dev",
+    "build": "pnpm --filter @portfolio/web build",
+    "preview": "pnpm --filter @portfolio/web preview",
+    "check": "pnpm --filter @portfolio/web check"
+  }
+}

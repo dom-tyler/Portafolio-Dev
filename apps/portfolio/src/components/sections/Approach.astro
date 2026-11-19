@@ -1,0 +1,82 @@
+---
+import { site } from '../../content/site';
+
+const steps = [
+  { code: 'A', title: 'Entender el problema', body: 'Quién lo usa, qué decisión toma y qué pasa si falla.' },
+  { code: 'B', title: 'Definir límites', body: 'Qué es interfaz, qué es servicio, qué es dato y qué es integración.' },
+  { code: 'C', title: 'Decidir la arquitectura', body: 'La opción más simple que resiste lo que viene, con sus costos explícitos.' },
+  { code: 'D', title: 'Entregar producto', body: 'Software en manos de personas reales, medido y mantenible.' },
+];
+---
+
+<section class="approach" aria-labelledby="enfoque-title">
+  <div class="shell">
+    <div class="section-head" data-reveal>
+      <p class="hud hud-bracket text-copper">02 · Enfoque</p>
+      <h2 id="enfoque-title" class="statement">{site.statement}</h2>
+    </div>
+
+    <ol class="steps">
+      {
+        steps.map((s, i) => (
+          <li class="step" data-reveal style={`transition-delay:${i * 80}ms`}>
+            <span class="hud step-code">
+              <span class="text-neon">{s.code}</span> — {String(i + 1).padStart(2, '0')}
+            </span>
+            <h3 class="step-title">{s.title}</h3>
+            <p class="step-body">{s.body}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .statement {
+    font-size: clamp(1.5rem, 3.1vw, 2.6rem);
+    line-height: 1.15;
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    max-width: 28ch;
+  }
+  .steps {
+    list-style: none;
+    display: grid;
+    border-top: 1px solid var(--c-line);
+  }
+  @media (min-width: 768px) {
+    .steps {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .step {
+    display: grid;
+    gap: 0.6rem;
+    align-content: start;
+    padding: 1.5rem 1.25rem 1.5rem 0;
+    border-bottom: 1px solid var(--c-line);
+  }
+  @media (min-width: 768px) {
+    .step {
+      border-bottom: 0;
+      padding-left: 1.25rem;
+      border-left: 1px solid var(--c-line);
+    }
+    .step:first-child {
+      border-left: 0;
+      padding-left: 0;
+    }
+  }
+  .step-code {
+    color: var(--c-faint);
+  }
+  .step-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+  .step-body {
+    color: var(--c-muted);
+    font-size: 0.9375rem;
+  }
+</style>

@@ -4,6 +4,7 @@
  * Sustituye capturas cuando el proyecto es privado.
  */
 import type { LayerName } from '@portfolio/content-schema';
+import TechIcon from './TechIcon.astro';
 
 interface Props {
   layers: LayerName[];
@@ -27,7 +28,10 @@ const active = new Set(layers);
   {
     ALL.map((l, i) => (
       <li class:list={['layer', { 'is-on': active.has(l.id) }]} style={`--i:${i}`}>
-        <span class="hud layer-label">{l.label}</span>
+        <span class="hud layer-label">
+          <TechIcon name={l.label} size={size === 'lg' ? 13 : 11} />
+          {l.label}
+        </span>
         <span class="layer-bar" aria-hidden="true">
           <span class="layer-node" />
         </span>
@@ -44,18 +48,22 @@ const active = new Set(layers);
   }
   .layer {
     display: grid;
-    grid-template-columns: 6.5rem 1fr;
+    grid-template-columns: 8rem 1fr;
     align-items: center;
     gap: 0.75rem;
   }
   .layers--sm .layer {
-    grid-template-columns: 5.5rem 1fr;
+    grid-template-columns: 7rem 1fr;
     gap: 0.5rem;
   }
   .layers--sm .layer-label {
     font-size: 0.625rem;
   }
   .layer-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
     color: var(--c-faint);
     transition: color 0.3s;
   }

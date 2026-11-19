@@ -16,6 +16,7 @@
     "@portfolio/content-schema": "workspace:*",
     "@portfolio/design-tokens": "workspace:*",
     "astro": "7.4.13",
+    "simple-icons": "16.36.0",
     "three": "0.187.0"
   },
   "devDependencies": {

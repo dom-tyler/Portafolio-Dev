@@ -1,6 +1,7 @@
 ---
 import type { Project } from '@portfolio/content-schema';
 import LayerDiagram from './LayerDiagram.astro';
+import TechIcon from './TechIcon.astro';
 import { statusLabel } from '../lib/labels';
 
 interface Props {
@@ -39,7 +40,14 @@ const num = String(index + 1).padStart(2, '0');
 
   <footer class="card-foot">
     <ul class="stack" aria-label="Tecnologías">
-      {p.stack.slice(0, variant === 'feature' ? 6 : 4).map((s) => <li class="hud chip">{s}</li>)}
+      {
+        p.stack.slice(0, variant === 'feature' ? 6 : 4).map((s) => (
+          <li class="hud chip">
+            <TechIcon name={s} size={11} />
+            {s}
+          </li>
+        ))
+      }
     </ul>
     <span class="hud go" aria-hidden="true">Caso →</span>
   </footer>
@@ -124,6 +132,9 @@ const num = String(index + 1).padStart(2, '0');
     gap: 0.375rem;
   }
   .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     padding: 0.3rem 0.5rem;
     border: 1px solid var(--c-line);
     color: var(--c-muted);

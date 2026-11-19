@@ -3,6 +3,7 @@ import type { GetStaticPaths } from 'astro';
 import type { Project } from '@portfolio/content-schema';
 import Base from '../../layouts/Base.astro';
 import LayerDiagram from '../../components/LayerDiagram.astro';
+import TechIcon from '../../components/TechIcon.astro';
 import { projects } from '../../content/projects';
 import { statusLabel, domainLabel } from '../../lib/labels';
 
@@ -84,7 +85,14 @@ const { project: p, next } = Astro.props;
         <div class="frame panel">
           <p class="hud text-copper panel-title">Stack</p>
           <ul class="stack">
-            {p.stack.map((s) => <li class="hud">{s}</li>)}
+            {
+              p.stack.map((s) => (
+                <li class="hud">
+                  <TechIcon name={s} size={14} class="ico" />
+                  {s}
+                </li>
+              ))
+            }
           </ul>
         </div>
       </aside>
@@ -219,8 +227,16 @@ const { project: p, next } = Astro.props;
     list-style: none;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem 1rem;
+    gap: 0.6rem 1.1rem;
     color: var(--c-muted);
+  }
+  .stack li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .stack :global(.ico) {
+    color: var(--c-copper);
   }
   .content {
     display: grid;

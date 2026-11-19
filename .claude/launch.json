@@ -4,8 +4,28 @@
     {
       "name": "portfolio",
       "runtimeExecutable": "/usr/bin/node-24",
-      "runtimeArgs": ["apps/portfolio/node_modules/astro/bin/astro.mjs", "dev", "--root", "apps/portfolio", "--port", "4321"],
+      "runtimeArgs": [
+        "apps/portfolio/node_modules/astro/bin/astro.mjs",
+        "dev",
+        "--root",
+        "apps/portfolio",
+        "--port",
+        "4321"
+      ],
       "port": 4321
+    },
+    {
+      "name": "portfolio-webgl",
+      "runtimeExecutable": "/usr/bin/node-24",
+      "runtimeArgs": [
+        "apps/portfolio/node_modules/astro/bin/astro.mjs",
+        "dev",
+        "--root",
+        "apps/portfolio",
+        "--port",
+        "4322"
+      ],
+      "port": 4322
     }
   ]
 }

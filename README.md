@@ -37,3 +37,8 @@ Tipos: Instrument Sans (títulos y texto), IBM Plex Mono (HUD y datos).
 - En móvil (< 768 px) y con `prefers-reduced-motion` no hay recorrido de scroll y queda el póster.
 
 Escenas: 1 Silicio (placa y chip), 2 Interfaz (paneles de producto), 3 Servicios + IA (nodos API/DB/RAG).
+
+### Variante WebGL (`src/components/hero/HeroWebGL.astro` + `webgl/`)
+three.js vanilla con shaders propios, cargado por import dinámico tras `load` (entrada ~2 KB gzip; el chunk `stage` con three, ~160 KB gzip, solo en escritorio).
+No monta con < 768 px, `prefers-reduced-motion`, ahorro de datos o sin WebGL2; si el contexto se pierde, vuelve el póster.
+Una sola toma de cámara: placa PCB con corriente → cruce del die → paneles de interfaz → grafo de servicios.

@@ -1,0 +1,228 @@
+---
+/**
+ * Variante WebGL del hero (mejora progresiva sobre el póster SVG).
+ * - Se monta en el slot `media` de Hero.astro. El HTML (nombre, frase, CTA) no espera al 3D.
+ * - three.js llega con import dinámico después de `load` y en tiempo ocioso: no compite con el LCP.
+ * - No monta con < 768 px, prefers-reduced-motion, ahorro de datos o sin WebGL2. Si algo falla,
+ *   el póster se queda y la página sigue completa.
+ */
+---
+
+<div class="webgl" data-webgl>
+  <div class="webgl-stage" data-webgl-stage></div>
+  <div class="webgl-hud hud" aria-hidden="true">
+    <span class="webgl-loader" data-webgl-loader hidden>
+      <span class="webgl-loader-label">WEBGL</span>
+      <span class="webgl-loader-bar" data-webgl-bar>==---=+==---=+==</span>
+      <span class="webgl-loader-pct" data-webgl-pct>000%</span>
+    </span>
+    <span class="webgl-readout" data-webgl-readout hidden>
+      <span data-webgl-scene>L0 · SILICIO</span>
+      <span class="sep">/</span>
+      <span data-webgl-cam>Z 00.00</span>
+      <span class="sep">/</span>
+      <span data-webgl-fps>-- FPS</span>
+    </span>
+  </div>
+</div>
+
+<style>
+  .webgl {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .webgl-stage {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.2s var(--ease-out);
+  }
+  :global(.hero.is-media-ready) .webgl-stage {
+    opacity: 1;
+  }
+  .webgl-stage :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .webgl-hud {
+    position: absolute;
+    top: 108px;
+    right: var(--gutter);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    color: var(--c-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .webgl-loader,
+  .webgl-readout {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    white-space: pre;
+    transition: opacity 0.6s var(--ease-out);
+  }
+  .webgl-loader[hidden],
+  .webgl-readout[hidden] {
+    display: none;
+  }
+  .webgl-loader-bar {
+    color: var(--c-neon);
+    letter-spacing: 0.08em;
+  }
+  .webgl-loader-pct {
+    color: var(--c-muted);
+  }
+  .webgl-loader.is-done {
+    opacity: 0;
+  }
+  .webgl-readout .sep {
+    color: color-mix(in oklab, var(--c-ivory) 20%, var(--c-graphite));
+  }
+  @media (max-width: 1023px) {
+    .webgl-hud {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  type Handle = { destroy(): void };
+
+  const root = document.querySelector<HTMLElement>('[data-webgl]');
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  const stageEl = root?.querySelector<HTMLElement>('[data-webgl-stage]');
+
+  if (root && hero && stageEl) {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const loader = root.querySelector<HTMLElement>('[data-webgl-loader]')!;
+    const bar = root.querySelector<HTMLElement>('[data-webgl-bar]')!;
+    const pct = root.querySelector<HTMLElement>('[data-webgl-pct]')!;
+    const readout = root.querySelector<HTMLElement>('[data-webgl-readout]')!;
+    const rScene = root.querySelector<HTMLElement>('[data-webgl-scene]')!;
+    const rCam = root.querySelector<HTMLElement>('[data-webgl-cam]')!;
+    const rFps = root.querySelector<HTMLElement>('[data-webgl-fps]')!;
+    const SCENES = ['L0 · SILICIO', 'L1 · INTERFAZ', 'L2 · SERVICIOS'];
+
+    let handle: Handle | null = null;
+    let mounting = false;
+    let failed = false;
+    let loaderTimer = 0;
+    let shown = 0;
+    let goal = 0;
+
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+
+    const hasWebGL2 = () => {
+      try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl2', { failIfMajorPerformanceCaveat: true });
+        if (!gl) return false;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const eligible = () => desktop.matches && !reduced.matches && !saveData && !failed;
+
+    // Cargador ASCII al estilo HUD: la barra se "ensambla" mientras avanza el porcentaje.
+    const GLYPHS = '=-+';
+    const startLoader = () => {
+      loader.hidden = false;
+      loader.classList.remove('is-done');
+      let tick = 0;
+      loaderTimer = window.setInterval(() => {
+        tick++;
+        shown += (goal - shown) * 0.18;
+        const n = 16;
+        const filled = Math.round(shown * n);
+        let s = '';
+        for (let i = 0; i < n; i++) {
+          if (i < filled) s += (i + tick) % 7 === 0 ? '+' : '=';
+          else s += GLYPHS[(i * 7 + tick * 3) % 3] === '=' ? '-' : GLYPHS[(i * 5 + tick) % 3];
+        }
+        bar.textContent = s;
+        pct.textContent = `${String(Math.round(shown * 100)).padStart(3, '0')}%`;
+      }, 60);
+    };
+    const stopLoader = (ok: boolean) => {
+      window.clearInterval(loaderTimer);
+      if (ok) {
+        bar.textContent = '================';
+        pct.textContent = '100%';
+        loader.classList.add('is-done');
+        window.setTimeout(() => {
+          loader.hidden = true;
+          readout.hidden = false;
+        }, 700);
+      } else {
+        loader.hidden = true;
+      }
+    };
+
+    const mount = async () => {
+      if (handle || mounting || !eligible()) return;
+      if (!hasWebGL2()) {
+        failed = true;
+        return;
+      }
+      mounting = true;
+      shown = 0;
+      goal = 0.03;
+      startLoader();
+      try {
+        const { mountStage } = await import('./webgl/stage');
+        if (!eligible()) throw new Error('inelegible');
+        handle = await mountStage({
+          hero,
+          container: stageEl,
+          onLoad: (p) => (goal = p),
+          onFrame: (info) => {
+            rScene.textContent = SCENES[info.scene - 1];
+            rCam.textContent = `Z ${info.cam.z.toFixed(2).padStart(5, '0')}`;
+            rFps.textContent = `${Math.round(info.fps)} FPS`;
+          },
+          onError: () => {
+            failed = true;
+            handle = null;
+            readout.hidden = true;
+          },
+        });
+        stopLoader(true);
+      } catch (err) {
+        // Sin pantallas rotas: queda el póster.
+        console.warn('[hero] WebGL no disponible, se mantiene el póster.', err);
+        handle?.destroy();
+        handle = null;
+        stopLoader(false);
+        if ((err as Error)?.message !== 'inelegible') failed = true;
+      } finally {
+        mounting = false;
+      }
+    };
+
+    const unmount = () => {
+      handle?.destroy();
+      handle = null;
+      readout.hidden = true;
+    };
+
+    const sync = () => (eligible() ? mount() : unmount());
+    desktop.addEventListener('change', sync);
+    reduced.addEventListener('change', sync);
+
+    const start = () => {
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+      if (idle) idle(() => sync(), { timeout: 1200 });
+      else window.setTimeout(sync, 200);
+    };
+    if (document.readyState === 'complete') start();
+    else window.addEventListener('load', start, { once: true });
+  }
+</script>

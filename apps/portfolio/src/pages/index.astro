@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import Hero from '../components/hero/Hero.astro';
+import HeroWebGL from '../components/hero/HeroWebGL.astro';
 import Featured from '../components/sections/Featured.astro';
 import Approach from '../components/sections/Approach.astro';
 import Experience from '../components/sections/Experience.astro';
@@ -9,7 +10,9 @@ import Contact from '../components/sections/Contact.astro';
 ---
 
 <Base>
-  <Hero />
+  <Hero>
+    <HeroWebGL slot="media" />
+  </Hero>
   <Featured />
   <Approach />
   <Experience />

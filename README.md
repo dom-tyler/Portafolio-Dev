@@ -1,6 +1,6 @@
 # Portafolio · Daniel Osorio
 
-Sitio público del portafolio. Astro estático + TypeScript + Tailwind 4. El panel de administración vive en un repositorio aparte (`AresHidalgo/AD-Portafolio`).
+Sitio público del portafolio. Astro estático + TypeScript + Tailwind 4. El panel de administración vive en un repositorio aparte (`dom-tyler/AD-Portafolio`).
 
 ## Requisitos
 - Node 24 (`.nvmrc`). Astro 7.4 exige Node ≥ 22.23.4.

@@ -14,7 +14,7 @@ export const site = {
   statement:
     'Empiezo por entender el problema, definir los límites del sistema y tomar decisiones de arquitectura. He llevado ese enfoque a productos comerciales, integraciones de pagos y mensajería, y prototipos en software y hardware.',
   contact: {
-    github: 'https://github.com/AresHidalgo',
+    github: 'https://github.com/dom-tyler',
     email: undefined as string | undefined,
     linkedin: undefined as string | undefined,
   },

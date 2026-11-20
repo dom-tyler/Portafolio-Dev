@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Reglas compartidas entre el sitio público y el admin (AresHidalgo/AD-Portafolio).
+// Reglas compartidas entre el sitio público y el admin (dom-tyler/AD-Portafolio).
 // El formulario escribe solo a través de la función `contact` (Admin SDK, que no pasa por estas reglas).
 // Si el admin agrega colecciones, extiende este archivo: el último despliegue de reglas reemplaza al anterior.
 service cloud.firestore {

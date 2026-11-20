@@ -18,7 +18,8 @@
   --glow-md: 0 0 24px color-mix(in oklab, var(--c-neon) 45%, transparent),
     0 0 2px var(--c-neon);
 
-  --font-sans: 'Instrument Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  /* 2 familias: Unbounded para títulos (display) e IBM Plex Mono para texto corrido y HUD. */
+  --font-display: 'Unbounded Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

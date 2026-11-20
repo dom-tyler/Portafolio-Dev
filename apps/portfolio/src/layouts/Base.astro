@@ -1,10 +1,11 @@
 ---
-import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/unbounded';
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/500.css';
 import '../styles/global.css';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
+import PixelField from '../components/PixelField.astro';
 import { site } from '../content/site';
 
 interface Props {
@@ -40,6 +41,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <slot name="head" />
   </head>
   <body>
+    <PixelField />
     <a
       href="#contenido"
       class="hud sr-only z-[70] bg-neon px-4 py-3 text-graphite focus:not-sr-only focus:fixed focus:top-3 focus:left-3"

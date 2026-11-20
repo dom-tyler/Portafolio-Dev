@@ -1,0 +1,443 @@
+---
+/**
+ * Variante WebGL del hero: chip vivo + mano robótica + capas holográficas, con onboarding.
+ *
+ * - Un script inline en <head> (BootFlag.astro) decide si hay onboarding y pone `is-booting` en
+ *   <html> antes del primer pintado. Sin JS no hay loader y el HTML del hero se ve tal cual.
+ * - Escritorio: escena completa. Móvil: chip solo (lite) si hardwareConcurrency >= 4 y sin ahorro
+ *   de datos; si no, póster. Sin WebGL2 o con error: póster y página completa.
+ * - three.js llega con import dinámico. El progreso del loader es real: fuentes, chunk, chip,
+ *   mano, entorno y compilación de shaders.
+ */
+const PINS = 16;
+const pins = Array.from({ length: PINS * 4 }, (_, i) => i);
+---
+
+<div class="webgl" data-webgl>
+  <div class="webgl-stage" data-webgl-stage></div>
+  <div class="webgl-hud hud" aria-hidden="true">
+    <span class="webgl-readout" data-webgl-readout hidden>
+      <span data-webgl-scene>L0 · SILICIO</span>
+      <span class="sep">/</span>
+      <span data-webgl-tier>T0</span>
+      <span class="sep">/</span>
+      <span data-webgl-fps>-- FPS</span>
+    </span>
+  </div>
+</div>
+
+<div class="boot" data-boot>
+  <p class="sr-only" role="status">Cargando la escena del portafolio</p>
+  <svg class="boot-chip" data-boot-chip viewBox="-60 -60 120 120" aria-hidden="true">
+    <rect class="boot-body" x="-30" y="-30" width="60" height="60" rx="1.2"></rect>
+    <rect class="boot-die" x="-11" y="-11" width="22" height="22"></rect>
+    {
+      pins.map((i) => {
+        const side = Math.floor(i / PINS);
+        const k = i % PINS;
+        const o = -30 + ((k + 1) * 60) / (PINS + 1);
+        // Orden perimetral (arriba → derecha → abajo → izquierda), igual que los pines 3D
+        const [x, y, w, h] =
+          side === 0
+            ? [o - 0.9, -38, 1.8, 7]
+            : side === 1
+              ? [31, o - 0.9, 7, 1.8]
+              : side === 2
+                ? [-o - 0.9, 31, 1.8, 7]
+                : [-38, -o - 0.9, 7, 1.8];
+        return <rect class="boot-pin" data-pin={i} x={x} y={y} width={w} height={h} />;
+      })
+    }
+  </svg>
+  <div class="boot-hud hud" aria-hidden="true">
+    <p class="boot-id"><span class="text-neon">//</span> DO·26 / ARCH-CORE</p>
+    <p class="boot-bar"><span data-boot-bar>================</span><span class="boot-pct" data-boot-pct>000%</span></p>
+    <ol class="boot-log" data-boot-log></ol>
+  </div>
+  <button type="button" class="boot-skip hud" data-boot-skip>Saltar <span aria-hidden="true">→</span></button>
+</div>
+
+<style>
+  .webgl {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .webgl-stage {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.8s var(--ease-out);
+  }
+  :global(.hero.is-media-ready) .webgl-stage {
+    opacity: 1;
+  }
+  .webgl-stage :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .webgl-hud {
+    position: absolute;
+    top: 108px;
+    right: var(--gutter);
+    color: var(--c-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .webgl-readout {
+    display: flex;
+    gap: 0.6rem;
+    white-space: pre;
+  }
+  .webgl-readout[hidden] {
+    display: none;
+  }
+  .webgl-readout .sep {
+    color: color-mix(in oklab, var(--c-ivory) 20%, var(--c-graphite));
+  }
+  @media (max-width: 1023px) {
+    .webgl-hud {
+      display: none;
+    }
+  }
+
+  /* ---------------- Onboarding ---------------- */
+  .boot {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: none;
+    place-items: center;
+    pointer-events: none;
+  }
+  :global(html.is-booting) .boot,
+  .boot.is-leaving {
+    display: grid;
+  }
+  :global(html.is-booting) .boot {
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .boot.is-leaving {
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-out);
+  }
+  .boot-chip {
+    width: min(60vw, 84vh);
+    height: auto;
+    overflow: visible;
+    transition: opacity 0.5s var(--ease-out);
+  }
+  .boot.has-scene .boot-chip {
+    opacity: 0;
+  }
+  .boot-body,
+  .boot-die {
+    fill: none;
+    stroke: color-mix(in oklab, var(--c-ivory) 70%, transparent);
+    stroke-width: 0.35;
+    vector-effect: non-scaling-stroke;
+  }
+  .boot-die {
+    stroke: color-mix(in oklab, var(--c-ivory) 35%, transparent);
+  }
+  .boot-pin {
+    fill: color-mix(in oklab, var(--c-ivory) 10%, transparent);
+    transition: fill 0.25s;
+  }
+  .boot-pin.is-lit {
+    fill: var(--c-copper);
+  }
+  .boot-hud {
+    position: absolute;
+    left: var(--gutter);
+    bottom: clamp(2rem, 7vh, 4rem);
+    display: grid;
+    gap: 0.6rem;
+    color: var(--c-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .boot-id {
+    color: var(--c-muted);
+  }
+  .boot-bar {
+    display: flex;
+    gap: 0.9rem;
+    color: var(--c-neon);
+    letter-spacing: 0.08em;
+    white-space: pre;
+  }
+  .boot-pct {
+    color: var(--c-ivory);
+  }
+  .boot-log {
+    list-style: none;
+    display: grid;
+    gap: 0.25rem;
+    min-height: 5.6em;
+  }
+  .boot-log :global(li) {
+    white-space: pre;
+  }
+  .boot-log :global(.ok) {
+    color: var(--c-pcb);
+  }
+  .boot-skip {
+    position: absolute;
+    right: var(--gutter);
+    bottom: clamp(2rem, 7vh, 4rem);
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--c-line-strong);
+    color: var(--c-muted);
+    transition:
+      color 0.2s,
+      border-color 0.2s;
+  }
+  .boot-skip:hover,
+  .boot-skip:focus-visible {
+    color: var(--c-ivory);
+    border-color: var(--c-ivory);
+  }
+  :global(html.boot-reduced) .boot-chip {
+    display: none;
+  }
+</style>
+
+<script>
+  type Handle = { destroy(): void; skipBoot(): void };
+  type Phase = 'ready' | 'ignite' | 'flight' | 'done';
+
+  const root = document.querySelector<HTMLElement>('[data-webgl]');
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  const stageEl = root?.querySelector<HTMLElement>('[data-webgl-stage]');
+  const bootEl = document.querySelector<HTMLElement>('[data-boot]');
+  const html = document.documentElement;
+
+  if (root && hero && stageEl && bootEl) {
+    // El overlay vive en <body>: dentro del hero quedaría atrapado bajo su contexto de apilamiento.
+    document.body.appendChild(bootEl);
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    const cores = navigator.hardwareConcurrency || 2;
+
+    const bar = bootEl.querySelector<HTMLElement>('[data-boot-bar]')!;
+    const pct = bootEl.querySelector<HTMLElement>('[data-boot-pct]')!;
+    const log = bootEl.querySelector<HTMLElement>('[data-boot-log]')!;
+    const pinEls = Array.from(bootEl.querySelectorAll<SVGRectElement>('[data-pin]'));
+    const skipBtn = bootEl.querySelector<HTMLButtonElement>('[data-boot-skip]')!;
+    const readout = root.querySelector<HTMLElement>('[data-webgl-readout]')!;
+    const rScene = root.querySelector<HTMLElement>('[data-webgl-scene]')!;
+    const rTier = root.querySelector<HTMLElement>('[data-webgl-tier]')!;
+    const rFps = root.querySelector<HTMLElement>('[data-webgl-fps]')!;
+    const SCENES = ['L0 · SILICIO', 'L1 · INTEGRACIÓN', 'L2 · PRODUCTO + IA'];
+
+    const booting = html.classList.contains('is-booting');
+    const short = html.classList.contains('boot-short');
+    const startedAt = performance.now();
+    const bootCtl = { enabled: booting && !reduced.matches, short, startedAt };
+
+    let handle: Handle | null = null;
+    let mounting = false;
+    let failed = false;
+    let bootOver = !booting;
+    let shown = 0;
+    let goal = 0;
+    let timer = 0;
+    let logged = 0;
+
+    const mode = (): 'full' | 'lite' | null => {
+      if (reduced.matches || saveData || failed) return null;
+      if (desktop.matches) return 'full';
+      return cores >= 4 ? 'lite' : null;
+    };
+
+    const hasWebGL2 = () => {
+      try {
+        const c = document.createElement('canvas');
+        const gl = c.getContext('webgl2');
+        if (!gl) return false;
+        gl.getExtension('WEBGL_lose_context')?.loseContext();
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    /* ---------------- HUD del loader ---------------- */
+    const LOG = [
+      { at: 0.12, text: 'POST ................ ', ok: 'OK' },
+      { at: 0.5, text: 'LOAD core.three ..... ', ok: 'OK' },
+      { at: 0.8, text: 'MOUNT /proyectos .... ', ok: 'OK' },
+      { at: 1, text: 'LINK core.ia ........ ', ok: 'OK' },
+    ];
+    const tick = () => {
+      shown += (goal - shown) * 0.2;
+      if (goal >= 1 && shown > 0.995) shown = 1;
+      const n = 16;
+      const filled = Math.round(shown * n);
+      const t = Math.floor(performance.now() / 60);
+      let s = '';
+      for (let i = 0; i < n; i++) s += i < filled ? ((i + t) % 7 === 0 ? '+' : '=') : '=-+'[(i * 7 + t * 3) % 3] === '=' ? '-' : '=-+'[(i * 5 + t) % 3];
+      bar.textContent = s;
+      pct.textContent = `${String(Math.round(shown * 100)).padStart(3, '0')}%`;
+      const lit = Math.floor(shown * pinEls.length);
+      pinEls.forEach((p, i) => p.classList.toggle('is-lit', i < lit));
+      while (logged < LOG.length && shown >= LOG[logged].at - 0.001) {
+        const li = document.createElement('li');
+        li.innerHTML = `${LOG[logged].text}<span class="ok">${LOG[logged].ok}</span>`;
+        log.appendChild(li);
+        logged++;
+      }
+    };
+    const setGoal = (p: number) => {
+      goal = Math.max(goal, Math.min(1, p));
+    };
+
+    /** Fin del onboarding: el HUD se disuelve y el copy entra (con decodificación del titular). */
+    const endBoot = () => {
+      if (bootOver) return;
+      bootOver = true;
+      window.clearInterval(timer);
+      bootEl.classList.add('is-leaving');
+      html.classList.remove('is-booting', 'boot-short', 'boot-reduced');
+      window.setTimeout(() => bootEl.classList.remove('is-leaving'), 700);
+      try {
+        sessionStorage.setItem('do-boot', '1');
+      } catch {
+        /* sin almacenamiento: la próxima visita repite la versión larga */
+      }
+      window.dispatchEvent(new CustomEvent('hero:reveal'));
+    };
+    const leaveHud = () => {
+      bootEl.classList.add('is-leaving');
+    };
+
+    const onPhase = (ph: Phase) => {
+      if (ph === 'ready') bootEl.classList.add('has-scene');
+      if (ph === 'flight') leaveHud();
+      if (ph === 'done') {
+        endBoot();
+        readout.hidden = false;
+      }
+    };
+
+    const skip = () => {
+      if (bootOver) return;
+      if (handle) handle.skipBoot();
+      else {
+        // La escena aún no está: se sigue con el póster y la escena entra sin vuelo cuando llegue.
+        bootCtl.enabled = false;
+        endBoot();
+      }
+    };
+
+    /* ---------------- Montaje ---------------- */
+    const mount = async () => {
+      const m = mode();
+      if (handle || mounting || !m) {
+        if (!m) endBoot();
+        return;
+      }
+      if (!hasWebGL2()) {
+        failed = true;
+        endBoot();
+        return;
+      }
+      mounting = true;
+      setGoal(0.04);
+      try {
+        await document.fonts?.ready;
+        setGoal(0.15);
+        const { mountStage } = await import('./webgl/stage');
+        setGoal(0.5);
+        if (!mode()) throw new Error('inelegible');
+        handle = await mountStage({
+          hero,
+          container: stageEl,
+          mode: m,
+          boot: bootCtl,
+          onLoad: (p) => setGoal(p),
+          onBootPhase: onPhase,
+          onFrame: (info) => {
+            rScene.textContent = SCENES[info.scene - 1];
+            rTier.textContent = `T${info.tier}`;
+            rFps.textContent = `${Math.round(info.fps)} FPS`;
+          },
+          onError: () => {
+            failed = true;
+            handle = null;
+            readout.hidden = true;
+            endBoot();
+          },
+        });
+        if (!bootCtl.enabled) {
+          endBoot();
+          readout.hidden = false;
+        }
+      } catch (err) {
+        console.warn('[hero] WebGL no disponible, se mantiene el póster.', err);
+        handle?.destroy();
+        handle = null;
+        if ((err as Error)?.message !== 'inelegible') failed = true;
+        endBoot();
+      } finally {
+        mounting = false;
+      }
+    };
+
+    const unmount = () => {
+      handle?.destroy();
+      handle = null;
+      readout.hidden = true;
+    };
+
+    if (booting) {
+      timer = window.setInterval(tick, 50);
+      // Volver a mitad de página (restauración de scroll) no tiene sentido con onboarding.
+      if (window.scrollY > window.innerHeight * 0.5) {
+        bootCtl.enabled = false;
+        endBoot();
+      }
+      if (reduced.matches) {
+        // Fundido breve sin vuelo ni escena
+        setGoal(1);
+        window.setTimeout(endBoot, 650);
+      } else {
+        // Si la carga pasa de ~6 s, seguimos con el póster; la escena entrará sin vuelo.
+        window.setTimeout(() => {
+          if (!bootOver && !handle) {
+            bootCtl.enabled = false;
+            endBoot();
+          }
+        }, 6000);
+      }
+      skipBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        skip();
+      });
+      bootEl.addEventListener('pointerdown', (e) => {
+        if ((e.target as HTMLElement).closest('[data-boot-skip]')) return;
+        skip();
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') skip();
+      });
+    }
+
+    const sync = () => (mode() ? mount() : unmount());
+    desktop.addEventListener('change', sync);
+    reduced.addEventListener('change', sync);
+    // Con onboarding se arranca ya (es la experiencia de entrada); sin él, tras `load` y en ocio.
+    if (booting) sync();
+    else {
+      const start = () => {
+        const idle = (window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+        if (idle) idle(() => sync(), { timeout: 1200 });
+        else window.setTimeout(sync, 200);
+      };
+      if (document.readyState === 'complete') start();
+      else window.addEventListener('load', start, { once: true });
+    }
+  }
+</script>

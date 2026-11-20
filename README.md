@@ -13,6 +13,27 @@ pnpm dev       # http://localhost:4321
 pnpm build     # apps/portfolio/dist
 ```
 
+## Variables de entorno
+Copia `apps/portfolio/.env.example` a `apps/portfolio/.env` y completa:
+
+| Variable | Uso |
+|---|---|
+| `PUBLIC_CONTACT_ENDPOINT` | Endpoint del formulario de contacto. En producción `/api/contact` (rewrite de Firebase Hosting, mismo origen). Vacía: el formulario queda deshabilitado e invita a escribir por LinkedIn. |
+| `PUBLIC_TURNSTILE_SITE_KEY` | Site key de Cloudflare Turnstile. Si existe, la página de inicio carga el script y el widget (tema oscuro) y envía el token; si no, no se carga nada. |
+
+### Contrato del formulario (backend en `apps/contact-api`)
+`POST` con `Content-Type: application/json`:
+
+```ts
+{ name: string /* 2–80 */, email: string /* ≤120 */, company?: string /* ≤120 */,
+  reason: 'proyecto' | 'empleo' | 'consultoria' | 'otro', message: string /* 20–4000 */,
+  website: string /* trampa: siempre vacío */, turnstileToken?: string }
+```
+
+Respuestas: `200 {ok:true}` · `400 {ok:false, error:'invalid', fields:{campo:'mensaje'}}` (cada mensaje se muestra en su campo) · `403 {error:'captcha'}` · `429 {error:'rate_limited'}` (se pide intentar más tarde) · `5xx {error:'server'}`.
+
+El correo público (`site.ts → contact.email`) es distinto del correo de trabajo, que recibe el formulario y **no** está en el cliente ni en el repositorio: lo conoce solo el backend.
+
 ## Estructura
 ```
 apps/portfolio/          sitio Astro
@@ -31,7 +52,7 @@ docs/CONTACT_SETUP.md    cuentas, secretos y despliegue del formulario de contac
 ## Dirección visual
 Cyberpunk sobrio, con igloo.inc como referente: microtipografía HUD, línea fina y cámara continua. El HTML se renderiza primero y el 3D llega como mejora progresiva.
 Paleta: grafito `#07090A`, marfil `#ECE6D9`, neón `#FF2A44`, cobre `#D4823F`, verde PCB `#1DB46E`.
-Tipos: Instrument Sans (títulos y texto), IBM Plex Mono (HUD y datos).
+Tipos: Unbounded (títulos, 650–800) e IBM Plex Mono (texto corrido, HUD y datos).
 
 ## Contrato del hero (para las variantes WebGL y video)
 `src/components/hero/Hero.astro` expone:
@@ -41,4 +62,12 @@ Tipos: Instrument Sans (títulos y texto), IBM Plex Mono (HUD y datos).
 - El evento `hero:motion` (`{ paused }`) y el atributo `data-motion="paused"` para el botón de pausa.
 - En móvil (< 768 px) y con `prefers-reduced-motion` no hay recorrido de scroll y queda el póster.
 
-Escenas: 1 Silicio (placa y chip), 2 Interfaz (paneles de producto), 3 Servicios + IA (nodos API/DB/RAG).
+Escenas: 1 Silicio (el chip vivo), 2 Integración (la mano lo toma), 3 Producto + IA (lo presenta y proyecta capas).
+
+### Variante WebGL (`src/components/hero/HeroWebGL.astro` + `webgl/`)
+- **Onboarding**: `BootFlag.astro` (inline en `<head>`) pone `is-booting` antes del primer pintado. El chip se enciende en el centro (contorno → pines de cobre según el progreso real de carga → pistas → latido del die), vuela hasta el hero y el titular entra decodificándose. Mínimo ~1.5 s, versión corta en revisitas (`sessionStorage`), botón "Saltar", clic o Esc para saltar; si pasa de 6 s sigue el póster. Con reduced-motion, fundido breve sin escena.
+- **Chip** (`chip.ts`): QFP con biseles y marcado láser, 64 pines instanciados con emisión por pin, die con shader emisivo, hilos de unión y abanico de pistas con corriente. Late de forma irregular, se inclina hacia el cursor con un resorte, lanza un arco desde el pin más cercano, acelera la corriente en hover y entra en sobrecarga con el clic.
+- **Mano** (`hand.ts`): procedural, una articulación por `Object3D`; entra desde abajo a la derecha, cierra los dedos, levanta el chip y lo presenta. **Capas** (`holo.ts`): Interfaz · API · Datos · IA.
+- **Rendimiento**: three.js por import dinámico (entrada ~2.7 KB gzip; chunk `stage` ~160 KB gzip). DPR ≤ 1.75 y tiers por FPS medidos (T1 al 75 % de resolución; T2 al 60 %, sin bloom y a 30 fps). Bucle pausado fuera de vista, con la pestaña oculta o con el botón de pausa.
+- **Móvil**: solo el chip (sin mano ni bloom, DPR 1) si `hardwareConcurrency >= 4` y sin ahorro de datos; si no, póster. Sin WebGL2 o si se pierde el contexto, vuelve el póster.
+- **Siguiente paso (fase B, sin implementar)**: después del hero, la mano con el chip persiste en un canvas fijo y discreto; al pasar sobre una tarjeta de proyecto se encienden en el chip las capas de ese proyecto (`layers` de `packages/content-schema`).

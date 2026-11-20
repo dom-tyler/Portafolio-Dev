@@ -1,0 +1,196 @@
+---
+/**
+ * Cierre en Contacto: el fondo de píxeles se reúne en un rostro cyber con el scroll.
+ * - Se monta perezosamente cuando Contacto se acerca (import dinámico; three suele estar ya en caché
+ *   por el hero). Escritorio completo; móvil ligero si hardwareConcurrency >= 4 y sin ahorro de datos.
+ * - Sin WebGL2, con reduced-motion o en equipos modestos: queda el retrato estático (mismo arte).
+ * - Emite `face:progress` (t 0..1) para que PixelField apague su rejilla al mismo ritmo.
+ * - Nodos HUD numerados unidos por una línea fina (referencia: igloo.inc) siguen la proyección del rostro.
+ */
+const nodes = [
+  { id: '01', label: 'OPT' },
+  { id: '02', label: 'LINK' },
+  { id: '03', label: 'I/O' },
+  { id: '04', label: 'CORE' },
+];
+---
+
+<div class="face-poster" data-face-poster aria-hidden="true">
+  <img src="/face/portrait.webp" alt="" width="720" height="720" loading="lazy" decoding="async" />
+</div>
+
+<div class="face-hud hud" data-face-hud aria-hidden="true">
+  <svg class="face-links"><polyline data-face-links points=""></polyline></svg>
+  {
+    nodes.map((n) => (
+      <span class="face-node" data-face-node>
+        <span class="face-dot" />
+        <span class="face-id">{n.id}</span>
+        <span class="face-label">{n.label}</span>
+      </span>
+    ))
+  }
+</div>
+
+<style is:global>
+  .face-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.6s var(--ease-out);
+  }
+</style>
+
+<style>
+  /* Retrato estático (respaldo): mismo encuadre que el rostro de partículas */
+  .face-poster {
+    position: absolute;
+    z-index: -1;
+    right: max(var(--gutter), calc((100vw - var(--maxw)) / 2));
+    top: 50%;
+    width: min(44vw, 86vh);
+    aspect-ratio: 1;
+    transform: translateY(-50%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.2s var(--ease-out);
+    -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+  }
+  .face-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .face-poster.is-on {
+    opacity: 0.85;
+  }
+
+  .face-hud {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s var(--ease-out);
+    color: var(--c-ivory);
+  }
+  .face-hud.is-on {
+    opacity: 1;
+  }
+  .face-links {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .face-links polyline {
+    fill: none;
+    stroke: color-mix(in oklab, var(--c-ivory) 45%, transparent);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+  }
+  .face-node {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.625rem;
+    white-space: nowrap;
+    will-change: transform;
+  }
+  .face-dot {
+    width: 7px;
+    height: 7px;
+    margin-left: -3.5px;
+    border: 1px solid var(--c-ivory);
+    background: var(--c-graphite);
+  }
+  .face-node:nth-child(3) .face-dot {
+    border-color: var(--c-pcb);
+    box-shadow: 0 0 8px var(--c-pcb);
+  }
+  .face-id {
+    color: var(--c-copper);
+  }
+  .face-label {
+    color: var(--c-muted);
+  }
+
+  @media (max-width: 767px) {
+    .face-poster {
+      left: 50%;
+      right: auto;
+      top: 0;
+      width: min(96vw, 56svh);
+      transform: translateX(-50%);
+    }
+    .face-hud {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  const section = document.querySelector<HTMLElement>('#contacto');
+  const poster = document.querySelector<HTMLElement>('[data-face-poster]');
+  const hud = document.querySelector<HTMLElement>('[data-face-hud]');
+
+  if (section && poster && hud) {
+    const desktop = window.matchMedia('(min-width: 768px)').matches;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+    const cores = navigator.hardwareConcurrency || 2;
+    const eligible = !reduced && !saveData && (desktop || cores >= 4);
+
+    const hasWebGL2 = () => {
+      try {
+        const gl = document.createElement('canvas').getContext('webgl2');
+        gl?.getExtension('WEBGL_lose_context')?.loseContext();
+        return !!gl;
+      } catch {
+        return false;
+      }
+    };
+
+    const showPoster = () => poster.classList.add('is-on');
+    const progress = (t: number) => window.dispatchEvent(new CustomEvent('face:progress', { detail: { t } }));
+
+    let started = false;
+    const start = async () => {
+      if (started) return;
+      started = true;
+      if (!eligible || !hasWebGL2()) {
+        showPoster();
+        return;
+      }
+      try {
+        const { mountFace } = await import('./face');
+        await mountFace({ section, lite: !desktop, hud, onProgress: progress });
+      } catch (err) {
+        console.warn('[face] sin WebGL, se muestra el retrato.', err);
+        progress(0);
+        showPoster();
+      }
+    };
+
+    // Carga perezosa: cuando faltan ~1.5 pantallas para llegar a Contacto
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          start();
+        }
+      },
+      { rootMargin: '0px 0px 150% 0px' },
+    );
+    io.observe(section);
+  }
+</script>

@@ -1,6 +1,7 @@
 ---
 import type { Project } from '@portfolio/content-schema';
 import LayerDiagram from './LayerDiagram.astro';
+import TechIcon from './TechIcon.astro';
 import { statusLabel } from '../lib/labels';
 
 interface Props {
@@ -39,7 +40,14 @@ const num = String(index + 1).padStart(2, '0');
 
   <footer class="card-foot">
     <ul class="stack" aria-label="Tecnologías">
-      {p.stack.slice(0, variant === 'feature' ? 6 : 4).map((s) => <li class="hud chip">{s}</li>)}
+      {
+        p.stack.slice(0, variant === 'feature' ? 6 : 4).map((s) => (
+          <li class="hud chip">
+            <TechIcon name={s} size={11} />
+            {s}
+          </li>
+        ))
+      }
     </ul>
     <span class="hud go" aria-hidden="true">Caso →</span>
   </footer>
@@ -52,7 +60,8 @@ const num = String(index + 1).padStart(2, '0');
     gap: 1.5rem;
     align-content: start;
     padding: clamp(1.25rem, 2.2vw, 2rem);
-    background: color-mix(in oklab, var(--c-graphite) 96%, var(--c-ivory));
+    /* Translúcida: deja ver la rejilla de píxeles y la animación del fondo */
+    background: color-mix(in oklab, color-mix(in oklab, var(--c-graphite) 94%, var(--c-ivory)) 52%, transparent);
     transition:
       border-color 0.35s var(--ease-out),
       background-color 0.35s var(--ease-out);
@@ -60,7 +69,7 @@ const num = String(index + 1).padStart(2, '0');
   .card:hover,
   .card:focus-within {
     border-color: var(--c-line-strong);
-    background: color-mix(in oklab, var(--c-graphite) 93%, var(--c-ivory));
+    background: color-mix(in oklab, color-mix(in oklab, var(--c-graphite) 90%, var(--c-ivory)) 72%, transparent);
   }
   .card:hover::before,
   .card:hover::after,
@@ -97,13 +106,14 @@ const num = String(index + 1).padStart(2, '0');
     gap: 0.6rem;
   }
   .card-title {
-    font-size: clamp(1.75rem, 3vw, 2.6rem);
-    line-height: 1;
-    font-weight: 600;
-    letter-spacing: -0.035em;
+    font-family: var(--font-display);
+    font-size: clamp(1.4rem, 2.3vw, 2rem);
+    line-height: 1.05;
+    font-weight: 650;
+    letter-spacing: -0.03em;
   }
   .card--compact .card-title {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
   }
   .card-tagline {
     color: var(--c-muted);
@@ -123,6 +133,9 @@ const num = String(index + 1).padStart(2, '0');
     gap: 0.375rem;
   }
   .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     padding: 0.3rem 0.5rem;
     border: 1px solid var(--c-line);
     color: var(--c-muted);

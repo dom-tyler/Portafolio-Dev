@@ -1,15 +1,35 @@
 ---
+/**
+ * Contacto: canales públicos + formulario.
+ * El formulario envía JSON a PUBLIC_CONTACT_ENDPOINT (backend aparte: guarda el mensaje, avisa al
+ * admin y reenvía al correo de trabajo). Ese correo nunca llega al cliente ni al repositorio.
+ * Sin la variable, el envío queda deshabilitado y se invita a escribir por LinkedIn.
+ * Contrato con apps/contact-api: ver README (cuerpo, límites y respuestas 200/400/403/429/5xx).
+ * Turnstile solo se carga si existe PUBLIC_TURNSTILE_SITE_KEY.
+ */
 import { site } from '../../content/site';
+import FaceField from '../face/FaceField.astro';
 
 const channels = [
-  site.contact.email && { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
-  site.contact.linkedin && { label: 'LinkedIn', value: 'Perfil profesional', href: site.contact.linkedin },
+  { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
+  { label: 'LinkedIn', value: site.contact.linkedinHandle, href: site.contact.linkedin },
   { label: 'GitHub', value: '@dom-tyler', href: site.contact.github },
-].filter(Boolean) as { label: string; value: string; href: string }[];
+];
+
+const endpoint = (import.meta.env.PUBLIC_CONTACT_ENDPOINT ?? '').trim();
+const turnstileKey = (import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();
+// Valores del contrato del backend; la etiqueta es lo que ve la persona.
+const reasons = [
+  { value: 'proyecto', label: 'Proyecto' },
+  { value: 'empleo', label: 'Empleo' },
+  { value: 'consultoria', label: 'Consultoría' },
+  { value: 'otro', label: 'Otro' },
+];
 ---
 
 <section id="contacto" class="contact" aria-labelledby="contacto-title">
-  <div class="shell">
+  <FaceField />
+  <div class="shell contact-shell">
     <div class="section-head" data-reveal>
       <p class="hud hud-bracket text-copper">05 · Contacto</p>
       <h2 id="contacto-title" class="display">
@@ -33,6 +53,61 @@ const channels = [
       }
     </ul>
 
+    <form class="form" data-contact-form data-endpoint={endpoint} novalidate data-reveal aria-labelledby="form-title">
+      <p id="form-title" class="hud form-title"><span class="text-neon">//</span> Escríbeme</p>
+
+      <div class="grid">
+        <div class="field">
+          <label for="cf-name" class="hud">Nombre</label>
+          <input id="cf-name" name="name" type="text" required minlength="2" maxlength="80" autocomplete="name" aria-describedby="cf-name-err" />
+          <p id="cf-name-err" class="field-err" data-err></p>
+        </div>
+        <div class="field">
+          <label for="cf-email" class="hud">Correo</label>
+          <input id="cf-email" name="email" type="email" required maxlength="120" autocomplete="email" inputmode="email" aria-describedby="cf-email-err" />
+          <p id="cf-email-err" class="field-err" data-err></p>
+        </div>
+        <div class="field">
+          <label for="cf-company" class="hud">Empresa <span class="opt">(opcional)</span></label>
+          <input id="cf-company" name="company" type="text" maxlength="120" autocomplete="organization" aria-describedby="cf-company-err" />
+          <p id="cf-company-err" class="field-err" data-err></p>
+        </div>
+        <div class="field">
+          <label for="cf-reason" class="hud">Motivo</label>
+          <select id="cf-reason" name="reason" required aria-describedby="cf-reason-err">
+            <option value="" disabled selected>Selecciona…</option>
+            {reasons.map((r) => <option value={r.value}>{r.label}</option>)}
+          </select>
+          <p id="cf-reason-err" class="field-err" data-err></p>
+        </div>
+        <div class="field field--full">
+          <label for="cf-message" class="hud">Mensaje</label>
+          <textarea id="cf-message" name="message" required minlength="20" maxlength="4000" rows="5" aria-describedby="cf-message-hint cf-message-err"></textarea>
+          <p id="cf-message-hint" class="field-hint">Mínimo 20 caracteres. Cuéntame el problema, el plazo y el contexto.</p>
+          <p id="cf-message-err" class="field-err" data-err></p>
+        </div>
+      </div>
+
+      <!-- Trampa para bots: invisible para personas y lectores de pantalla -->
+      <div class="hp" aria-hidden="true">
+        <label>Sitio web <input name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <!-- Cloudflare Turnstile: solo con PUBLIC_TURNSTILE_SITE_KEY (render implícito, tema oscuro) -->
+      <div data-turnstile class:list={['turnstile', { 'cf-turnstile': turnstileKey }]} data-sitekey={turnstileKey || undefined} data-theme="dark"></div>
+      {turnstileKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
+
+      <div class="actions">
+        <button type="submit" class="btn btn--primary" data-submit disabled={!endpoint}>
+          <span data-submit-label>{endpoint ? 'Enviar mensaje' : 'Formulario en configuración — escríbeme por LinkedIn'}</span>
+          {endpoint && <span class="arrow" aria-hidden="true">→</span>}
+        </button>
+        <p class="hud form-status" role="status" aria-live="polite" data-form-status>
+          {!endpoint && <a href={site.contact.linkedin} target="_blank" rel="noopener noreferrer" class="link-copper">LinkedIn ↗</a>}
+        </p>
+      </div>
+      <p class="hud privacy">Tu correo solo se usa para responderte. No se publica ni se comparte.</p>
+    </form>
+
     <p class="hud status" data-reveal>
       <span class="led" aria-hidden="true"></span>
       {site.location} · Disponible para proyectos y equipos de producto
@@ -41,8 +116,24 @@ const channels = [
 </section>
 
 <style>
+  /* Cierre: el texto a la izquierda y, a la derecha, el rostro que arma el fondo de píxeles. */
   .contact {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
     padding-bottom: clamp(4rem, 8vw, 7rem);
+  }
+  .contact-shell > * {
+    max-width: 36rem;
+  }
+  @media (max-width: 767px) {
+    .contact {
+      display: block;
+      min-height: 0;
+      /* Espacio arriba para el rostro en móvil */
+      padding-top: min(52svh, 92vw);
+    }
   }
   .channels {
     list-style: none;
@@ -53,7 +144,7 @@ const channels = [
     grid-template-columns: 6rem 1fr auto;
     align-items: baseline;
     gap: 1rem;
-    padding: 1.5rem 0;
+    padding: 1.1rem 0;
     border-bottom: 1px solid var(--c-line);
     transition: padding-left 0.4s var(--ease-out);
   }
@@ -61,10 +152,11 @@ const channels = [
     padding-left: 0.75rem;
   }
   .channel-value {
-    font-size: clamp(1.25rem, 2.6vw, 2rem);
+    font-size: clamp(1.05rem, 2vw, 1.5rem);
     font-weight: 500;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
     transition: color 0.3s;
+    overflow-wrap: anywhere;
   }
   .channel:hover .channel-value {
     color: var(--c-neon);
@@ -73,11 +165,289 @@ const channels = [
     color: var(--c-faint);
     font-size: 1rem;
   }
+
+  /* ---------------- Formulario ---------------- */
+  .form {
+    margin-top: 2.75rem;
+  }
+  .form-title {
+    color: var(--c-muted);
+    margin-bottom: 1.25rem;
+  }
+  .grid {
+    display: grid;
+    gap: 1.4rem 1.5rem;
+  }
+  @media (min-width: 640px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .field--full {
+      grid-column: 1 / -1;
+    }
+  }
+  .field {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+  .field label {
+    color: var(--c-faint);
+  }
+  .opt {
+    color: color-mix(in oklab, var(--c-ivory) 25%, var(--c-graphite));
+    text-transform: none;
+    letter-spacing: 0.04em;
+  }
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.55rem 0 0.6rem;
+    border: 0;
+    border-bottom: 1px solid var(--c-line-strong);
+    border-radius: 0;
+    background: transparent;
+    color: var(--c-ivory);
+    font: inherit;
+    font-size: 0.9375rem;
+    transition:
+      border-color 0.25s var(--ease-out),
+      box-shadow 0.25s var(--ease-out);
+  }
+  textarea {
+    resize: vertical;
+    min-height: 7.5rem;
+    line-height: 1.55;
+  }
+  select {
+    appearance: none;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--c-muted) 50%), linear-gradient(-45deg, transparent 50%, var(--c-muted) 50%);
+    background-position:
+      calc(100% - 9px) 55%,
+      calc(100% - 4px) 55%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select option {
+    background: var(--c-graphite);
+    color: var(--c-ivory);
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-bottom-color: var(--c-neon);
+    box-shadow: 0 1px 0 var(--c-neon), 0 8px 14px -12px var(--c-neon);
+  }
+  [aria-invalid='true'] {
+    border-bottom-color: var(--c-neon);
+    border-bottom-style: dashed;
+  }
+  .field-hint {
+    font-size: 0.75rem;
+    color: var(--c-faint);
+  }
+  .field-err {
+    min-height: 0;
+    font-size: 0.75rem;
+    color: var(--c-neon);
+  }
+  .field-err:empty {
+    display: none;
+  }
+  .turnstile:not(:empty) {
+    margin-top: 1.5rem;
+  }
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.25rem;
+    margin-top: 1.75rem;
+  }
+  .btn[disabled] {
+    cursor: not-allowed;
+    background: transparent;
+    border-color: var(--c-line-strong);
+    color: var(--c-muted);
+    box-shadow: none;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+  .btn[aria-busy='true'] {
+    opacity: 0.75;
+    cursor: progress;
+  }
+  .form-status {
+    color: var(--c-muted);
+  }
+  .form-status[data-state='ok'] {
+    color: var(--c-pcb);
+  }
+  .form-status[data-state='error'] {
+    color: var(--c-neon);
+  }
+  .privacy {
+    margin-top: 1rem;
+    color: var(--c-faint);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
   .status {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     color: var(--c-muted);
   }
 </style>
+
+<script>
+  type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  type ApiError = { ok?: boolean; error?: 'invalid' | 'captcha' | 'rate_limited' | 'server'; fields?: Record<string, string> };
+
+  const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
+  if (form) {
+    const submit = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+    const label = form.querySelector<HTMLElement>('[data-submit-label]')!;
+    const status = form.querySelector<HTMLElement>('[data-form-status]')!;
+    const turnstileEl = form.querySelector<HTMLElement>('[data-turnstile].cf-turnstile');
+    const fields = Array.from(form.querySelectorAll<Field>('input[name]:not([name="website"]), select, textarea'));
+
+    const errorEl = (el: Field) =>
+      el
+        .getAttribute('aria-describedby')
+        ?.split(' ')
+        .map((id) => document.getElementById(id))
+        .find((n) => n?.hasAttribute('data-err')) ?? null;
+    const setFieldError = (el: Field, msg: string) => {
+      el.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      const err = errorEl(el);
+      if (err) err.textContent = msg;
+    };
+    const messageFor = (el: Field) => {
+      const v = el.validity;
+      if (v.valueMissing) return el.tagName === 'SELECT' ? 'Elige un motivo.' : 'Este campo es obligatorio.';
+      if (v.typeMismatch) return 'Escribe un correo válido (nombre@dominio).';
+      if (v.tooLong) return 'El texto es demasiado largo.';
+      return '';
+    };
+    const check = (el: Field) => {
+      // minlength solo actúa sobre texto editado por la persona: se verifica también a mano.
+      const min = (el as HTMLTextAreaElement).minLength;
+      const len = el.value.trim().length;
+      const short = min > 0 && len > 0 && len < min;
+      const msg = short ? `Escribe al menos ${min} caracteres (llevas ${len}).` : el.checkValidity() ? '' : messageFor(el);
+      setFieldError(el, msg);
+      return !msg;
+    };
+    // Valida al salir del campo y, si ya marcó error, mientras corrige
+    fields.forEach((el) => {
+      el.addEventListener('blur', () => el.value && check(el));
+      el.addEventListener('input', () => el.getAttribute('aria-invalid') === 'true' && check(el));
+    });
+
+    const setStatus = (text: string, state: 'idle' | 'sending' | 'ok' | 'error') => {
+      status.textContent = text;
+      status.dataset.state = state;
+    };
+    const turnstile = () => (window as Window & { turnstile?: { reset(el?: HTMLElement): void } }).turnstile;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const endpoint = form.dataset.endpoint ?? '';
+      if (!endpoint) return;
+      const results = fields.map(check);
+      if (results.includes(false)) {
+        fields[results.indexOf(false)].focus();
+        setStatus('Revisa los campos marcados.', 'error');
+        return;
+      }
+      const data = new FormData(form);
+      const website = String(data.get('website') ?? '');
+      // Trampa: si un bot llenó el campo oculto, se simula éxito sin enviar nada.
+      if (website.trim()) {
+        form.reset();
+        setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
+        return;
+      }
+      const token = String(data.get('cf-turnstile-response') ?? '');
+      if (turnstileEl && !token) {
+        setStatus('Completa la verificación antes de enviar.', 'error');
+        return;
+      }
+      const company = String(data.get('company') ?? '').trim();
+      const payload = {
+        name: String(data.get('name') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        ...(company ? { company } : {}),
+        reason: String(data.get('reason') ?? ''),
+        message: String(data.get('message') ?? '').trim(),
+        website,
+        ...(token ? { turnstileToken: token } : {}),
+      };
+      submit.disabled = true;
+      submit.setAttribute('aria-busy', 'true');
+      const prev = label.textContent;
+      label.textContent = 'Enviando…';
+      setStatus('Enviando mensaje…', 'sending');
+      const ctrl = new AbortController();
+      const timer = window.setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: ctrl.signal,
+        });
+        let body: ApiError | null = null;
+        try {
+          body = (await res.json()) as ApiError;
+        } catch {
+          /* respuesta sin JSON */
+        }
+        if (res.ok && body?.ok !== false) {
+          form.reset();
+          fields.forEach((el) => setFieldError(el, ''));
+          setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
+        } else if (res.status === 400 && body?.fields) {
+          // Errores del servidor, cada uno en su campo
+          let first: Field | null = null;
+          for (const [name, msg] of Object.entries(body.fields)) {
+            const el = form.querySelector<Field>(`[name="${CSS.escape(name)}"]`);
+            if (!el) continue;
+            setFieldError(el, msg);
+            first ??= el;
+          }
+          first?.focus();
+          setStatus('Revisa los campos marcados.', 'error');
+        } else if (res.status === 403 || body?.error === 'captcha') {
+          setStatus('No pudimos verificar que eres una persona. Completa la verificación de nuevo.', 'error');
+        } else if (res.status === 429 || body?.error === 'rate_limited') {
+          setStatus('Recibí demasiados mensajes desde tu conexión. Intenta más tarde.', 'error');
+        } else {
+          setStatus('El servidor no pudo procesar el mensaje. Intenta en unos minutos o escríbeme por LinkedIn.', 'error');
+        }
+      } catch (err) {
+        console.warn('[contacto] envío fallido', err);
+        setStatus('No se pudo conectar. Revisa tu conexión e intenta de nuevo, o escríbeme por LinkedIn.', 'error');
+      } finally {
+        window.clearTimeout(timer);
+        // El token de Turnstile es de un solo uso
+        if (turnstileEl) turnstile()?.reset(turnstileEl);
+        submit.disabled = false;
+        submit.removeAttribute('aria-busy');
+        label.textContent = prev;
+      }
+    });
+  }
+</script>

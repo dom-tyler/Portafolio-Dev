@@ -57,6 +57,8 @@
     let paused = hero?.dataset.motion === 'paused';
     let pageVisible = document.visibilityState !== 'hidden';
     let uncovered = false;
+    // 0..1: cuánto de la rejilla ya migró al rostro de Contacto (FaceField)
+    let faceT = 0;
     const pointer = { x: -9999, y: -9999, active: false };
 
     // Ruido de valor barato y determinista: talla "continentes" de brillo.
@@ -113,7 +115,7 @@
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = NEON;
       for (const d of dots) {
-        ctx.globalAlpha = d.base * 0.7;
+        ctx.globalAlpha = d.base * 0.7 * (1 - 0.88 * faceT);
         ctx.fillRect(d.x - 1, d.y - 1, DOT, DOT);
       }
       ctx.globalAlpha = 1;
@@ -128,6 +130,7 @@
       ripples = ripples.filter((r) => now - r.start < RIPPLE_LIFE);
       const drift = t * 0.00015;
       const hot: { x: number; y: number; a: number; b: number }[] = [];
+      const fieldK = 1 - 0.88 * faceT;
 
       ctx.fillStyle = NEON;
       for (const d of dots) {
@@ -140,7 +143,7 @@
         // Zonas amplias que se apagan y encienden juntas
         const zn = noise(d.x * 0.006 + drift, d.y * 0.006 - drift * 0.7);
         const zone = 0.35 + 0.65 * smooth(zn);
-        let alpha = d.base * (0.12 + 0.88 * breathe) * zone * appear;
+        let alpha = d.base * (0.12 + 0.88 * breathe) * zone * appear * fieldK;
 
         let boost = 0;
         for (const r of ripples) {
@@ -221,6 +224,11 @@
     document.addEventListener('visibilitychange', () => {
       pageVisible = document.visibilityState !== 'hidden';
       kick();
+    });
+    window.addEventListener('face:progress', (e) => {
+      const t = (e as CustomEvent<{ t: number }>).detail?.t ?? 0;
+      faceT = t * t * (3 - 2 * t);
+      if (!animated()) drawStatic();
     });
     window.addEventListener('hero:motion', (e) => {
       paused = Boolean((e as CustomEvent<{ paused: boolean }>).detail?.paused);

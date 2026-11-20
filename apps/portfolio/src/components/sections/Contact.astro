@@ -1,5 +1,6 @@
 ---
 import { site } from '../../content/site';
+import FaceField from '../face/FaceField.astro';
 
 const channels = [
   site.contact.email && { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
@@ -9,7 +10,8 @@ const channels = [
 ---
 
 <section id="contacto" class="contact" aria-labelledby="contacto-title">
-  <div class="shell">
+  <FaceField />
+  <div class="shell contact-shell">
     <div class="section-head" data-reveal>
       <p class="hud hud-bracket text-copper">05 · Contacto</p>
       <h2 id="contacto-title" class="display">
@@ -41,8 +43,24 @@ const channels = [
 </section>
 
 <style>
+  /* Cierre: el texto a la izquierda y, a la derecha, el rostro que arma el fondo de píxeles. */
   .contact {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
     padding-bottom: clamp(4rem, 8vw, 7rem);
+  }
+  .contact-shell > * {
+    max-width: 40rem;
+  }
+  @media (max-width: 767px) {
+    .contact {
+      display: block;
+      min-height: 0;
+      /* Espacio arriba para el rostro en móvil */
+      padding-top: min(52svh, 92vw);
+    }
   }
   .channels {
     list-style: none;

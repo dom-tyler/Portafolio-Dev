@@ -122,7 +122,7 @@ export const projects = parseProjects([
     stack: ['Python', 'Intérpretes', 'GUI', 'CLI'],
     domains: ['lenguajes'],
     layers: ['interfaz', 'api'],
-    links: { repo: 'https://github.com/AresHidalgo/EasyLang-Compiler' },
+    links: { repo: 'https://github.com/dom-tyler/EasyLang-Compiler' },
   },
   {
     slug: 'nellup',
@@ -161,7 +161,7 @@ export const projects = parseProjects([
     stack: ['React', 'Vite', 'Express', 'MongoDB', 'JWT'],
     domains: ['frontend', 'backend'],
     layers: ['interfaz', 'api', 'datos'],
-    links: { repo: 'https://github.com/AresHidalgo/Zoe' },
+    links: { repo: 'https://github.com/dom-tyler/Zoe' },
   },
   {
     slug: 'myc-restaurant',
@@ -185,7 +185,7 @@ export const projects = parseProjects([
     stack: ['PostgreSQL', 'MongoDB'],
     domains: ['backend', 'datos'],
     layers: ['api', 'datos'],
-    links: { repo: 'https://github.com/AresHidalgo/MyC-Restaurant' },
+    links: { repo: 'https://github.com/dom-tyler/MyC-Restaurant' },
   },
   {
     slug: 'neobit-infinity',
@@ -203,7 +203,7 @@ export const projects = parseProjects([
     stack: ['React', 'TypeScript', 'React Three Fiber', 'Framer Motion'],
     domains: ['frontend'],
     layers: ['interfaz'],
-    links: { repo: 'https://github.com/AresHidalgo/Neobit-Infinity' },
+    links: { repo: 'https://github.com/dom-tyler/Neobit-Infinity' },
   },
   {
     slug: 'multitenancy-nestjs',
@@ -238,7 +238,7 @@ export const projects = parseProjects([
     stack: ['Godot 4', 'GDScript'],
     domains: ['juegos'],
     layers: ['interfaz', 'datos'],
-    links: { repo: 'https://github.com/AresHidalgo/MinnoGhram' },
+    links: { repo: 'https://github.com/dom-tyler/MinnoGhram' },
   },
 ]);
 

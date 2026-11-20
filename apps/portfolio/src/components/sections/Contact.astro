@@ -5,7 +5,7 @@ import FaceField from '../face/FaceField.astro';
 const channels = [
   site.contact.email && { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
   site.contact.linkedin && { label: 'LinkedIn', value: 'Perfil profesional', href: site.contact.linkedin },
-  { label: 'GitHub', value: '@AresHidalgo', href: site.contact.github },
+  { label: 'GitHub', value: '@dom-tyler', href: site.contact.github },
 ].filter(Boolean) as { label: string; value: string; href: string }[];
 ---
 

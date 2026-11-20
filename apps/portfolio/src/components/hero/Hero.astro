@@ -116,6 +116,14 @@ const scenes = [
   }
   .hero.is-media-ready .hero-poster {
     opacity: 0;
+    /* Oculto tras el fundido y sin animar: sus trazos animados repintaban cada cuadro detrás del WebGL. */
+    visibility: hidden;
+    transition:
+      opacity 1.2s var(--ease-out),
+      visibility 0s 1.2s;
+  }
+  .hero.is-media-ready .hero-poster :global(*) {
+    animation-play-state: paused;
   }
   .hero-scrim {
     position: absolute;

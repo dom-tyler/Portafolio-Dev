@@ -1,9 +1,9 @@
-import { BufferAttribute, BufferGeometry, Points, Vector2, Vector3, type WebGLRenderer, type Scene, type Camera, HalfFloatType, WebGLRenderTarget } from 'three';
+import { BufferAttribute, BufferGeometry, Points, ShaderMaterial, Vector2, Vector3, type WebGLRenderer, type Scene, type Camera, HalfFloatType, WebGLRenderTarget } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { FXAAPass } from 'three/examples/jsm/postprocessing/FXAAPass.js';
+import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { mulberry32 } from './geometry';
 import { pointsMaterial } from './materials';
 
@@ -146,11 +146,95 @@ const FinalShader = {
   `,
 };
 
+/**
+ * Dibuja la escena a una resolución interna propia y la lleva a la resolución nativa del composer.
+ * - Escala 1: dibuja directo en el búfer del composer (sin costo extra).
+ * - Escala > 1 (supermuestreo): reduce con un filtro de caja de 4 tomas bilineales (exacto hasta 2x).
+ * - Escala < 1: amplía con filtrado bilineal.
+ * Así el bloom y el acabado siempre trabajan a resolución nativa y su aspecto no cambia.
+ */
+class ScenePass extends Pass {
+  scale = 1;
+  private rt: WebGLRenderTarget;
+  private quad: FullScreenQuad;
+  private mat: ShaderMaterial;
+  private w = 1;
+  private h = 1;
+
+  constructor(
+    private scene: Scene,
+    private camera: Camera,
+  ) {
+    super();
+    this.needsSwap = false;
+    this.rt = new WebGLRenderTarget(1, 1, { type: HalfFloatType });
+    this.mat = new ShaderMaterial({
+      uniforms: { tScene: { value: null }, uOff: { value: new Vector2() }, uBox: { value: 0 } },
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D tScene;
+        uniform vec2 uOff;
+        uniform float uBox;
+        varying vec2 vUv;
+        void main() {
+          if (uBox < 0.5) { gl_FragColor = texture2D(tScene, vUv); return; }
+          gl_FragColor = 0.25 * (texture2D(tScene, vUv + vec2(-uOff.x, -uOff.y)) + texture2D(tScene, vUv + vec2(uOff.x, -uOff.y))
+                               + texture2D(tScene, vUv + vec2(-uOff.x, uOff.y)) + texture2D(tScene, vUv + vec2(uOff.x, uOff.y)));
+        }
+      `,
+      depthTest: false,
+      depthWrite: false,
+    });
+    this.quad = new FullScreenQuad(this.mat);
+  }
+
+  private native() {
+    return Math.abs(this.scale - 1) < 1e-3;
+  }
+
+  setSize(w: number, h: number) {
+    this.w = w;
+    this.h = h;
+    if (this.native()) {
+      this.rt.setSize(1, 1);
+      return;
+    }
+    const iw = Math.max(1, Math.round(w * this.scale));
+    const ih = Math.max(1, Math.round(h * this.scale));
+    this.rt.setSize(iw, ih);
+    // Un píxel de salida cubre `scale` texeles: tomas a ±scale/4 de texel promedian el área.
+    (this.mat.uniforms.uOff.value as Vector2).set((this.scale * 0.25) / iw, (this.scale * 0.25) / ih);
+    this.mat.uniforms.uBox.value = this.scale > 1 ? 1 : 0;
+  }
+
+  render(renderer: WebGLRenderer, _write: WebGLRenderTarget, read: WebGLRenderTarget) {
+    const target = this.native() ? read : this.rt;
+    renderer.setRenderTarget(this.renderToScreen && this.native() ? null : target);
+    renderer.clear();
+    renderer.render(this.scene, this.camera);
+    if (this.native()) return;
+    this.mat.uniforms.tScene.value = this.rt.texture;
+    renderer.setRenderTarget(this.renderToScreen ? null : read);
+    this.quad.render(renderer);
+  }
+
+  dispose() {
+    this.rt.dispose();
+    this.mat.dispose();
+    this.quad.dispose();
+  }
+}
+
 export function buildComposer(renderer: WebGLRenderer, scene: Scene, camera: Camera, w: number, h: number) {
-  // Sin MSAA: en GPUs integradas cuesta más que toda la escena. FXAA al final (solo con DPR bajo).
+  // Sin MSAA ni FXAA: MSAA en float duplica el costo en GPUs integradas y FXAA emborrona el detalle.
+  // Los bordes se limpian con supermuestreo cuando la GPU tiene margen (ver quality.ts).
   const rt = new WebGLRenderTarget(w, h, { type: HalfFloatType });
   const composer = new EffectComposer(renderer, rt);
-  composer.addPass(new RenderPass(scene, camera));
+  const scenePass = new ScenePass(scene, camera);
+  composer.addPass(scenePass);
   // Bloom a un cuarto de resolución: es un desenfoque, la diferencia no se ve y cuesta 4x menos.
   const bloom = new UnrealBloomPass(new Vector2(w / 2, h / 2), 0.95, 0.6, 0.95);
   const setBloomSize = bloom.setSize.bind(bloom);
@@ -158,7 +242,9 @@ export function buildComposer(renderer: WebGLRenderer, scene: Scene, camera: Cam
   composer.addPass(bloom);
   const finish = new ShaderPass(FinalShader);
   composer.addPass(finish);
-  const fxaa = new FXAAPass();
-  composer.addPass(fxaa);
-  return { composer, bloom, finish, fxaa };
+  /** Resolución interna de la escena respecto de la nativa. Llamar antes de composer.setSize. */
+  const setSceneScale = (scale: number) => {
+    scenePass.scale = scale;
+  };
+  return { composer, bloom, finish, setSceneScale };
 }

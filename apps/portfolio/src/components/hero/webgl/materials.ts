@@ -17,6 +17,8 @@ export const shared = {
   uFogFar: { value: 30 },
   /** Intensidad global de la corriente (0 = apagada). */
   uCurrent: { value: 1 },
+  /** Píxeles internos por píxel de pantalla: las líneas finas conservan su grosor en pantalla. */
+  uLineScale: { value: 1 },
 };
 
 const fogPars = /* glsl */ `
@@ -276,9 +278,10 @@ export function panelMaterial(map: Texture, aspect: number): ShaderMaterial {
       varying float vDepth;
       varying vec3 vW;
       varying vec3 vN;
-      // Línea de ~w píxeles con antialias (independiente de la distancia).
+      uniform float uLineScale;
+      // Línea de ~w píxeles de pantalla con antialias (independiente de la distancia y de la resolución interna).
       float line(float d, float w) {
-        float aa = max(fwidth(d), 1e-5);
+        float aa = max(fwidth(d), 1e-5) * uLineScale;
         return 1.0 - smoothstep(w * aa, (w + 1.0) * aa, abs(d));
       }
       void main() {

@@ -361,7 +361,7 @@ const pins = Array.from({ length: PINS * 4 }, (_, i) => i);
           onBootPhase: onPhase,
           onFrame: (info) => {
             rScene.textContent = SCENES[info.scene - 1];
-            rTier.textContent = `T${info.tier}`;
+            rTier.textContent = `T${info.tier} · ${info.pr.toFixed(2)}x`;
             rFps.textContent = `${Math.round(info.fps)} FPS`;
           },
           onError: () => {

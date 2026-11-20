@@ -20,6 +20,7 @@ import {
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { buildChip, PIN_COUNT, type Chip } from './chip';
 import { buildComposer, buildDust, Sparks } from './fx';
+import { GpuTimer, ResolutionController } from './quality';
 import { mulberry32 } from './geometry';
 import { buildHand, HAND_SCALE, type Hand } from './hand';
 import { buildHolo, type Holo } from './holo';
@@ -38,12 +39,14 @@ export interface FrameInfo {
   scene: 1 | 2 | 3;
   fps: number;
   tier: number;
+  /** Resolución interna (píxeles por píxel CSS). */
+  pr: number;
 }
 
 export interface StageOptions {
   hero: HTMLElement;
   container: HTMLElement;
-  /** full: chip + mano + capas + bloom. lite (móvil): solo el chip, DPR 1, sin bloom. */
+  /** full: chip + mano + capas + bloom. lite (móvil): solo el chip, sin bloom. */
   mode: 'full' | 'lite';
   /** Onboarding: el chip se enciende en el centro y vuela al hero. */
   boot: { enabled: boolean; short: boolean; startedAt: number };
@@ -139,10 +142,18 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
   // El pase final hace tone mapping y sRGB: el renderer trabaja en lineal de punta a punta.
   renderer.outputColorSpace = LinearSRGBColorSpace;
   renderer.setClearColor(C.graphite, 1);
-  const maxDpr = lite ? 1 : Math.min(window.devicePixelRatio || 1, 1.75);
+  // El lienzo va a resolución nativa (tope 2x). La escena se dibuja a una resolución interna que
+  // se adapta a la GPU: hasta 1.5x en pantallas 1x (supermuestreo) y nunca por debajo de 0.75x.
+  const nativeDpr = Math.min(window.devicePixelRatio || 1, 2);
+  const res = new ResolutionController({
+    start: lite ? Math.min(nativeDpr, 1.5) : nativeDpr,
+    min: Math.min(0.75, nativeDpr),
+    max: lite ? nativeDpr : Math.max(nativeDpr, 1.5),
+    budgetMs: 12,
+  });
+  let dpr = res.pr;
   let tier = 0;
-  let dpr = maxDpr;
-  renderer.setPixelRatio(dpr);
+  renderer.setPixelRatio(nativeDpr);
   const canvas = renderer.domElement;
   canvas.setAttribute('aria-hidden', 'true');
   container.appendChild(canvas);
@@ -195,13 +206,16 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
 
   await nextFrame();
   report(0.7, 'SHADERS');
-  const { composer, bloom, finish, fxaa } = buildComposer(renderer, scene, camera, w, h);
+  const { composer, bloom, finish, setSceneScale } = buildComposer(renderer, scene, camera, w, h);
   const applyQuality = () => {
-    renderer.setPixelRatio(dpr);
-    composer.setPixelRatio(dpr);
+    dpr = res.pr;
+    tier = !res.bloom ? 2 : dpr < nativeDpr - 1e-6 ? 1 : 0;
+    // El composer (bloom y acabado) va a resolución nativa; solo la escena cambia de resolución.
+    setSceneScale(dpr / nativeDpr);
+    shared.uLineScale.value = dpr / nativeDpr;
+    composer.setPixelRatio(nativeDpr);
     composer.setSize(w, h);
-    bloom.enabled = !lite && tier < 2;
-    fxaa.enabled = dpr < 1.5;
+    bloom.enabled = !lite && res.bloom;
     finish.uniforms.uAspect.value = w / h;
     finish.uniforms.uSideDim.value = portrait() ? 0 : 1;
     (dust.material as ShaderMaterial).uniforms.uPixelRatio.value = dpr * (h / 900);
@@ -300,7 +314,7 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
   let acc = 0;
   let fps = 60;
   let infoTick = 0;
-  let capAcc = 0;
+  let gpuMs = 0;
 
   const camPos = new Vector3();
   const camTgt = new Vector3();
@@ -551,7 +565,12 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
     bloom.strength = 0.85 + beat * 0.25 + overload * 0.8;
   };
 
-  const render = () => composer.render();
+  const timer = GpuTimer.create(renderer.getContext());
+  const render = () => {
+    timer?.begin();
+    composer.render();
+    timer?.end();
+  };
 
   /* ---------------- Bucle ---------------- */
   const running = () => !destroyed && !paused && inView && pageVisible;
@@ -564,38 +583,35 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
     raf = requestAnimationFrame(loop);
     const rawDt = Math.min(0.1, (now - last) / 1000);
     last = now;
-    // Tier bajo: tope de ~30 fps
-    if (tier >= 2) {
-      capAcc += rawDt;
-      if (capAcc < 1 / 31) return;
-    }
-    const dt = Math.min(0.05, tier >= 2 ? capAcc : rawDt);
-    capAcc = 0;
+    const dt = Math.min(0.05, rawDt);
     time += dt;
     progress += (target - progress) * (1 - Math.exp(-dt * 5.5));
     if (Math.abs(target - progress) < 1e-4) progress = target;
     apply(dt);
     render();
 
-    // FPS medidos → tiers de calidad (solo bajan). Se mide fuera del vuelo, con la pestaña visible.
+    // Resolución adaptativa: con temporizador de GPU sube y baja según el costo real del cuadro;
+    // sin él, solo baja si los FPS no alcanzan. Solo sube con el onboarding terminado.
+    const locked = import.meta.env.DEV && (window as unknown as { __heroLockTier?: boolean }).__heroLockTier;
+    if (timer) {
+      const ms = timer.poll();
+      if (ms !== null) {
+        gpuMs = ms;
+        if (!locked && res.gpu(ms, now, boot === 'done')) applyQuality();
+      }
+    }
     frames++;
-    acc += dt;
+    acc += rawDt;
     if (acc >= 1.5) {
       fps = frames / acc;
-      const locked = import.meta.env.DEV && (window as unknown as { __heroLockTier?: boolean }).__heroLockTier;
-      if (boot === 'done' && fps < 48 && tier < 2 && !locked) {
-        tier++;
-        // T1: ~0.75 de resolución con bloom; T2: 0.6, sin bloom y tope de 30 fps.
-        dpr = tier === 1 ? Math.min(maxDpr, 1.25) * 0.75 : 0.6;
-        applyQuality();
-      }
+      if (!timer && !locked && boot === 'done' && res.fps(fps, now)) applyQuality();
       frames = 0;
       acc = 0;
     }
     infoTick -= dt;
     if (infoTick <= 0 && o.onFrame) {
       infoTick = 0.12;
-      o.onFrame({ progress, scene: progress < 1 / 3 ? 1 : progress < 2 / 3 ? 2 : 3, fps, tier });
+      o.onFrame({ progress, scene: progress < 1 / 3 ? 1 : progress < 2 / 3 ? 2 : 3, fps, tier, pr: dpr });
     }
   };
 
@@ -713,6 +729,7 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
       m.dispose();
     });
     envRT.dispose();
+    timer?.dispose();
     composer.dispose();
     renderer.dispose();
     canvas.remove();
@@ -735,7 +752,7 @@ export async function mountStage(o: StageOptions): Promise<StageHandle> {
   };
 
   if (import.meta.env.DEV) {
-    (window as unknown as Record<string, unknown>).__heroStage = { scene, camera, chip, hand, holo, composer, bloom, finish, renderer, setTier: (t: number) => ((tier = t), (dpr = t === 0 ? maxDpr : t === 1 ? Math.min(maxDpr, 1.25) * 0.75 : 0.6), applyQuality()) };
+    (window as unknown as Record<string, unknown>).__heroStage = { scene, camera, chip, hand, holo, composer, bloom, finish, renderer, res, gpuMs: () => gpuMs, setPR: (p: number) => ((res.pr = p), applyQuality()) };
   }
 
   // Primer cuadro

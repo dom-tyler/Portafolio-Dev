@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Reglas compartidas entre el sitio público y el admin (AresHidalgo/AD-Portafolio).
+// El formulario escribe solo a través de la función `contact` (Admin SDK, que no pasa por estas reglas).
+// Si el admin agrega colecciones, extiende este archivo: el último despliegue de reglas reemplaza al anterior.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    // Mensajes del formulario: el admin los lee, los marca como leídos o los borra. Nadie crea desde el cliente.
+    match /messages/{id} {
+      allow read, delete: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'read', 'notes']);
+      allow create: if false;
+    }
+
+    // Contadores de rate limit: solo la función.
+    match /rateLimits/{id} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

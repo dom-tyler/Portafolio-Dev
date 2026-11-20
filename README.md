@@ -18,10 +18,15 @@ pnpm build     # apps/portfolio/dist
 apps/portfolio/          sitio Astro
   src/content/           contenido validado con Zod (projects, experience, site)
   src/components/hero/   hero de tres escenas (contrato abajo)
+apps/contact-api/        función de Firebase del formulario de contacto (Resend + Firestore)
 packages/content-schema/ esquema Zod compartido
 packages/design-tokens/  paleta y tipografía (5 colores, 2 familias)
 docs/CONTENT_REVIEW.md   afirmaciones pendientes de validar antes de publicar
+docs/CONTACT_SETUP.md    cuentas, secretos y despliegue del formulario de contacto
 ```
+
+## Formulario de contacto
+`POST /api/contact` llega a la función `contact`: valida, revisa Turnstile y el límite de envíos, guarda en Firestore (`messages`) y te manda un correo con formato vía Resend. Tu correo de trabajo vive como secreto y nunca llega al cliente. La configuración paso a paso está en `docs/CONTACT_SETUP.md`.
 
 ## Dirección visual
 Cyberpunk sobrio, con igloo.inc como referente: microtipografía HUD, línea fina y cámara continua. El HTML se renderiza primero y el 3D llega como mejora progresiva.

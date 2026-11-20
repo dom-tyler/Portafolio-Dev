@@ -17,3 +17,11 @@ service-account*.json
 
 # Documento de planeación privado (notas sobre CV y validaciones)
 Portafolio_Daniel_Osorio.md
+
+# Función de contacto
+apps/contact-api/lib/
+.secret.local
+**/.secret.local
+.runtimeconfig.json
+firebase-debug.log
+firestore-debug.log

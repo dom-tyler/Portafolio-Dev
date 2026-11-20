@@ -1,0 +1,33 @@
+{
+  "hosting": {
+    "site": "daniel-dev-portafolio",
+    "public": "apps/portfolio/dist",
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "ignore": ["firebase.json", "**/.*"],
+    "rewrites": [
+      {
+        "source": "/api/contact",
+        "function": { "functionId": "contact", "region": "us-central1" }
+      }
+    ]
+  },
+  "functions": [
+    {
+      "source": "apps/contact-api",
+      "codebase": "contact",
+      "runtime": "nodejs22",
+      "ignore": ["node_modules", "src", ".git", "*.log", ".secret.local"],
+      "predeploy": ["pnpm --filter @portfolio/contact-api test", "pnpm --filter @portfolio/contact-api build"]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "emulators": {
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "hosting": { "port": 5000 },
+    "ui": { "enabled": true }
+  }
+}

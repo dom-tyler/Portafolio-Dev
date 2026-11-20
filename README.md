@@ -54,71 +54,11 @@ Este repositorio es mi portafolio y, a la vez, una muestra de cómo trabajo.
 
 <img src="docs/readme/pipeline.svg" width="100%" alt="Pipeline: Descubrir (brief.md) · Modelar (openapi.yaml) · Decidir (ADR-001) · Construir (ci passing) · Operar (p95 · logs)" />
 
-## Proyectos destacados
+## Proyectos
 
-<table>
-<tr>
-<td width="50%" valign="top">
+Los casos viven en el portafolio y se actualizan desde el admin, así que siempre están al día.
 
-### [Excentrix](https://daniel-dev-portafolio.web.app/proyectos/excentrix)
-<sub>PRODUCTO COMERCIAL · 2026</sub>
-
-Catálogo digital de perfumería con decants y compra guiada por WhatsApp.
-
-![En vivo](https://img.shields.io/badge/En%20vivo-1DB46E?style=flat-square)
-![Astro](https://img.shields.io/badge/Astro-0E1113?style=flat-square&logo=astro&logoColor=D4823F)
-![Firestore](https://img.shields.io/badge/Firestore-0E1113?style=flat-square&logo=firebase&logoColor=D4823F)
-
-[Caso →](https://daniel-dev-portafolio.web.app/proyectos/excentrix) &nbsp;·&nbsp; [Sitio ↗](https://excentrix.web.app/)
-
-</td>
-<td width="50%" valign="top">
-
-### [Dayed Inmobiliaria](https://daniel-dev-portafolio.web.app/proyectos/dayed-inmobiliaria)
-<sub>TRABAJO COMERCIAL · DEVSCODE</sub>
-
-Descubrimiento de inmuebles con filtros, mapa, favoritos y contacto directo.
-
-![Caso privado](https://img.shields.io/badge/Caso%20privado-D4823F?style=flat-square)
-![React](https://img.shields.io/badge/React-0E1113?style=flat-square&logo=react&logoColor=D4823F)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-0E1113?style=flat-square&logo=postgresql&logoColor=D4823F)
-
-[Caso →](https://daniel-dev-portafolio.web.app/proyectos/dayed-inmobiliaria)
-
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
-
-### [LiquiLegal](https://daniel-dev-portafolio.web.app/proyectos/liquilegal)
-<sub>PROYECTO COMERCIAL · ZETA</sub>
-
-Pasarela de pagos y recuperación documental con un microservicio RAG.
-
-![Caso privado](https://img.shields.io/badge/Caso%20privado-D4823F?style=flat-square)
-![NestJS](https://img.shields.io/badge/NestJS-0E1113?style=flat-square&logo=nestjs&logoColor=D4823F)
-![LangChain](https://img.shields.io/badge/LangGraph-0E1113?style=flat-square&logo=langchain&logoColor=D4823F)
-
-[Caso →](https://daniel-dev-portafolio.web.app/proyectos/liquilegal)
-
-</td>
-<td width="50%" valign="top">
-
-### [EasyLang Compiler](https://daniel-dev-portafolio.web.app/proyectos/easylang)
-<sub>INGENIERÍA INFORMÁTICA · LENGUAJES</sub>
-
-Lenguaje educativo con intérprete propio, interfaz gráfica y CLI.
-
-![Académico](https://img.shields.io/badge/Acad%C3%A9mico-8F8B83?style=flat-square)
-![Python](https://img.shields.io/badge/Python-0E1113?style=flat-square&logo=python&logoColor=D4823F)
-
-[Caso →](https://daniel-dev-portafolio.web.app/proyectos/easylang) &nbsp;·&nbsp; [Repo ↗](https://github.com/dom-tyler/EasyLang-Compiler)
-
-</td>
-</tr>
-</table>
-
-<sub>**En el laboratorio:** CRM multicanal con agente conversacional · multitenancy en NestJS + Prisma · app social full stack · marketplace con visor 3D · sistemas de juego en Godot 4. Todos están en el [portafolio →](https://daniel-dev-portafolio.web.app/proyectos)</sub>
+[![Ver proyectos](https://img.shields.io/badge/Ver%20proyectos%20en%20el%20portafolio-FF2A44?style=for-the-badge&logo=astro&logoColor=white)](https://daniel-dev-portafolio.web.app/proyectos)
 
 ## Stack por capa
 

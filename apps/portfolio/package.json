@@ -7,7 +7,10 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "check": "astro check"
+    "check": "astro check",
+    "seed": "node scripts/seed-firestore.ts",
+    "set-admin": "node scripts/set-admin.ts",
+    "publish-status": "node scripts/publish-status.ts"
   },
   "dependencies": {
     "@astrojs/sitemap": "3.7.6",
@@ -22,6 +25,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.3.5",
     "@types/three": "0.187.0",
+    "firebase-admin": "14.5.1",
     "tailwindcss": "4.3.5"
   }
 }

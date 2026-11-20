@@ -4,7 +4,7 @@
  * El formulario envía JSON a PUBLIC_CONTACT_ENDPOINT (backend aparte: guarda el mensaje, avisa al
  * admin y reenvía al correo de trabajo). Ese correo nunca llega al cliente ni al repositorio.
  * Sin la variable, el envío queda deshabilitado y se invita a escribir por LinkedIn.
- * Contrato con apps/contact-api: ver README (cuerpo, límites y respuestas 200/400/403/429/5xx).
+ * Contrato con el Worker apps/api: ver docs/DEVELOPMENT.md (cuerpo, límites y respuestas 200/400/403/429/5xx).
  * Turnstile solo se carga si existe PUBLIC_TURNSTILE_SITE_KEY.
  */
 import { site } from '../../content/site';

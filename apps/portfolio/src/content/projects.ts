@@ -3,7 +3,7 @@ import { parseProjects } from '@portfolio/content-schema';
 /**
  * Catálogo público. Redacción conservadora: solo afirmaciones respaldadas.
  * Lo pendiente de validar vive en docs/CONTENT_REVIEW.md, nunca aquí.
- * Más adelante este archivo se reemplaza por la proyección pública de Firestore.
+ * Fuente local y carga inicial de Firestore; lo publicado se lee en content/load.ts.
  */
 export const projects = parseProjects([
   {
@@ -242,5 +242,3 @@ export const projects = parseProjects([
   },
 ]);
 
-export const featured = projects.filter((p) => p.tier === 'destacado');
-export const lab = projects.filter((p) => p.tier === 'laboratorio');

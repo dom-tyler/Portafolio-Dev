@@ -1,0 +1,76 @@
+# Reconstruye el sitio leyendo Firestore y lo publica en Firebase Hosting.
+# Lo dispara el botón "Publicar" del admin (vía el Worker apps/api, con publish_id) o un push a main.
+# Requiere:
+#   - secret FIREBASE_SERVICE_ACCOUNT: JSON de una cuenta de servicio con los roles
+#     "Firebase Hosting Admin" y "Cloud Datastore User".
+#   - variable DEPLOY_ENABLED=true (mientras no exista, los push a main no despliegan).
+#   - variable PUBLIC_CONTACT_ENDPOINT: URL del Worker + /contact (ej. https://portfolio-api.<sub>.workers.dev/contact).
+#   - variable PUBLIC_TURNSTILE_SITE_KEY (opcional; es pública).
+name: Deploy sitio
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_id:
+        description: Id del documento en publishes (lo envía el admin)
+        required: false
+        default: ''
+  push:
+    branches: [main]
+    paths:
+      - apps/portfolio/**
+      - packages/**
+      - firebase.json
+      - pnpm-lock.yaml
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLISH_ID: ${{ inputs.publish_id }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Marcar publicación en curso
+        if: inputs.publish_id != ''
+        working-directory: apps/portfolio
+        run: node scripts/publish-status.ts "$PUBLISH_ID" running "$RUN_URL"
+
+      - name: Build con contenido de Firestore
+        run: pnpm build
+        env:
+          CONTENT_SOURCE: firestore
+          PUBLIC_CONTACT_ENDPOINT: ${{ vars.PUBLIC_CONTACT_ENDPOINT }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+
+      - name: Deploy a Firebase Hosting
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" \
+            pnpm dlx firebase-tools@15 deploy --only hosting --project portafolio-dev-4586 --non-interactive
+          rm -f "$RUNNER_TEMP/sa.json"
+
+      - name: Marcar resultado
+        if: always() && inputs.publish_id != ''
+        working-directory: apps/portfolio
+        run: node scripts/publish-status.ts "$PUBLISH_ID" "${{ job.status == 'success' && 'success' || 'failure' }}" "$RUN_URL"

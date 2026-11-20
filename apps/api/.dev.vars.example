@@ -1,0 +1,6 @@
+# Valores falsos para wrangler dev. Copia a .dev.vars (ignorado por git).
+FIREBASE_SERVICE_ACCOUNT={}
+RESEND_API_KEY=dummy
+CONTACT_TO_EMAIL=dummy@example.com
+TURNSTILE_SECRET=
+GITHUB_PUBLISH_TOKEN=

@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
-import { projects, featured, lab } from '../../content/projects';
+import { projects, featured, lab } from '../../content/load';
 import { domainLabel } from '../../lib/labels';
 
 const domains = [...new Set(projects.flatMap((p) => p.domains))];

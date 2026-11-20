@@ -18,7 +18,7 @@ const text = (min: number, max: number, label: string) =>
     .max(max, { error: `${label} admite máximo ${max} caracteres.` });
 
 /**
- * Contrato del formulario público (`POST /api/contact`).
+ * Contrato del formulario público (`POST /contact` del Worker).
  * `website` es un honeypot: un humano nunca lo llena.
  */
 export const ContactSchema = z.object({

@@ -19,7 +19,9 @@ service-account*.json
 Portafolio_Daniel_Osorio.md
 
 # Función de contacto
-apps/contact-api/lib/
+apps/api/.wrangler/
+.dev.vars
+**/.dev.vars
 .secret.local
 **/.secret.local
 .runtimeconfig.json

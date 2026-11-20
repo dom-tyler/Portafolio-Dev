@@ -1,0 +1,15 @@
+{
+  // Worker de la API del portafolio (plan gratuito de Cloudflare).
+  // Secretos: wrangler secret put FIREBASE_SERVICE_ACCOUNT | RESEND_API_KEY | CONTACT_TO_EMAIL | TURNSTILE_SECRET | GITHUB_PUBLISH_TOKEN
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "portfolio-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "portafolio-dev-4586",
+    // Sin dominio verificado en Resend, solo funciona onboarding@resend.dev (y entrega solo al correo de la cuenta).
+    "CONTACT_FROM": "Portafolio Daniel Osorio <onboarding@resend.dev>",
+    "ALLOWED_ORIGINS": "https://daniel-dev-portafolio.web.app,https://admin-dev-portafolio.web.app"
+  }
+}

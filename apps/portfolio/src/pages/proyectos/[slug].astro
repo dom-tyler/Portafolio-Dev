@@ -4,7 +4,7 @@ import type { Project } from '@portfolio/content-schema';
 import Base from '../../layouts/Base.astro';
 import LayerDiagram from '../../components/LayerDiagram.astro';
 import TechIcon from '../../components/TechIcon.astro';
-import { projects } from '../../content/projects';
+import { projects } from '../../content/load';
 import { statusLabel, domainLabel } from '../../lib/labels';
 
 export const getStaticPaths = (() =>
@@ -123,6 +123,25 @@ const { project: p, next } = Astro.props;
             ))}
           </ol>
         </section>
+
+        {
+          p.integrations.length > 0 && (
+            <section>
+              <h2 class="hud h">Integraciones</h2>
+              <ul class="integrations">
+                {p.integrations.map((it) => (
+                  <li>
+                    <span class="hud int-name">
+                      <TechIcon name={it.name} size={14} class="ico" />
+                      {it.name}
+                    </span>
+                    <span>{it.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
 
         {
           p.decisions.length > 0 && (
@@ -272,6 +291,33 @@ const { project: p, next } = Astro.props;
   .n {
     color: var(--c-neon);
     padding-top: 0.2rem;
+  }
+  .integrations {
+    list-style: none;
+    display: grid;
+    border-top: 1px solid var(--c-line);
+  }
+  .integrations li {
+    display: grid;
+    gap: 0.35rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--c-line);
+  }
+  @media (min-width: 640px) {
+    .integrations li {
+      grid-template-columns: 12rem 1fr;
+      gap: 1.25rem;
+    }
+  }
+  .int-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--c-ivory);
+    padding-top: 0.15rem;
+  }
+  .integrations li > span:last-child {
+    color: var(--c-muted);
   }
   .decisions {
     display: grid;

@@ -1,4 +1,4 @@
-import { parseExperience } from '@portfolio/content-schema';
+import { parseExperience, parseToolbelt } from '@portfolio/content-schema';
 
 /** Trayectoria, de lo más reciente a lo más antiguo. Fechas pendientes en docs/CONTENT_REVIEW.md. */
 export const experience = parseExperience([
@@ -56,14 +56,14 @@ export const CODE_AGENTS = {
 } as const;
 
 /** Capas de herramientas. Solo tecnologías con caso asociado o experiencia referida. */
-export const toolbelt = [
-  { layer: 'Fundamentos', items: ['C', 'C++', 'Java', 'Python', 'TypeScript', 'SQL'] },
-  { layer: 'Interfaz', items: ['React', 'Next.js', 'Astro', 'Vite', 'Tailwind', 'Three.js / R3F'] },
-  { layer: 'Servicios', items: ['Node.js', 'Express', 'NestJS', 'FastAPI', 'Spring Boot', 'APIs REST'] },
-  { layer: 'Datos', items: ['PostgreSQL', 'MongoDB', 'Firestore', 'Prisma', 'Supabase', 'MySQL'] },
-  { layer: 'IA', items: ['LangChain', 'LangGraph', 'RAG', 'Embeddings', 'Dify', 'MCP'] },
-  { layer: 'Agentes de código', items: [CODE_AGENTS.claude, CODE_AGENTS.codex, CODE_AGENTS.kimi, CODE_AGENTS.local] },
-  { layer: 'Integraciones', items: ['Meta / WhatsApp', 'Bold', 'Firebase Auth', 'n8n', 'Cloudinary'] },
-  { layer: 'Infraestructura', items: ['Firebase Hosting', 'Vercel', 'GitHub Actions', 'Docker', 'VPS', 'Linux'] },
-  { layer: 'Hardware', items: ['Arduino', 'Electrónica digital', 'Proteus', 'Packet Tracer'] },
-] as const;
+export const toolbelt = parseToolbelt([
+  { id: 'fundamentos', layer: 'Fundamentos', order: 1, items: ['C', 'C++', 'Java', 'Python', 'TypeScript', 'SQL'] },
+  { id: 'interfaz', layer: 'Interfaz', order: 2, items: ['React', 'Next.js', 'Astro', 'Vite', 'Tailwind', 'Three.js / R3F'] },
+  { id: 'servicios', layer: 'Servicios', order: 3, items: ['Node.js', 'Express', 'NestJS', 'FastAPI', 'Spring Boot', 'APIs REST'] },
+  { id: 'datos', layer: 'Datos', order: 4, items: ['PostgreSQL', 'MongoDB', 'Firestore', 'Prisma', 'Supabase', 'MySQL'] },
+  { id: 'ia', layer: 'IA', order: 5, items: ['LangChain', 'LangGraph', 'RAG', 'Embeddings', 'Dify', 'MCP'] },
+  { id: 'agentes-de-codigo', layer: 'Agentes de código', order: 6, items: [CODE_AGENTS.claude, CODE_AGENTS.codex, CODE_AGENTS.kimi, CODE_AGENTS.local] },
+  { id: 'integraciones', layer: 'Integraciones', order: 7, items: ['Meta / WhatsApp', 'Bold', 'Firebase Auth', 'n8n', 'Cloudinary'] },
+  { id: 'infraestructura', layer: 'Infraestructura', order: 8, items: ['Firebase Hosting', 'Vercel', 'GitHub Actions', 'Docker', 'VPS', 'Linux'] },
+  { id: 'hardware', layer: 'Hardware', order: 9, items: ['Arduino', 'Electrónica digital', 'Proteus', 'Packet Tracer'] },
+]);

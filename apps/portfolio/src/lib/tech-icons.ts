@@ -59,6 +59,13 @@ const BRANDS: Record<string, string> = {
   WordPress: 'Wordpress',
 };
 
+/** Marcas resueltas por prefijo: los nombres llevan versión ("Claude Code · Opus 5.5") y cambian. */
+const BRAND_PREFIX: [string, string][] = [
+  ['Claude', 'Claude'],
+  ['Kimi', 'Kimi'],
+  ['Modelos locales', 'Ollama'],
+];
+
 // Íconos de línea propios (viewBox 24, trazo 1.5). Solo formas geométricas simples.
 const LINE: Record<string, string> = {
   database: '<ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><path d="M5 5.5v13c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-13"/><path d="M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/>',
@@ -95,6 +102,7 @@ const CONCEPTS: Record<string, keyof typeof LINE> = {
   RBAC: 'shield',
   'Agentes conversacionales': 'agent',
   Scrum: 'cycle',
+  'Agentes de código': 'agent',
   // Capas del sistema
   Fundamentos: 'terminal',
   Interfaz: 'window',
@@ -111,11 +119,11 @@ const CONCEPTS: Record<string, keyof typeof LINE> = {
 type SimpleIcon = { path: string; title: string };
 
 export function techIcon(name: string): TechIcon {
-  const slug = BRANDS[name];
+  const slug = BRANDS[name] ?? BRAND_PREFIX.find(([p]) => name.startsWith(p))?.[1];
   if (slug) {
     const icon = (si as unknown as Record<string, SimpleIcon | undefined>)[`si${slug}`];
     if (icon) return { kind: 'brand', path: icon.path, title: icon.title };
   }
-  const concept = CONCEPTS[name];
+  const concept = CONCEPTS[name] ?? (name.startsWith('Codex') ? 'terminal' : undefined);
   return { kind: 'line', body: LINE[concept ?? 'chip'], title: name };
 }

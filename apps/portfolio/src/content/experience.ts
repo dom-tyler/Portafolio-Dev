@@ -44,6 +44,17 @@ export const experience = parseExperience([
   },
 ]);
 
+/**
+ * Agentes de código: versiones en un solo lugar para cambiarlas fácil.
+ * Pendiente de confirmar por Daniel (la versión de Codex salió de una sola fuente).
+ */
+export const CODE_AGENTS = {
+  claude: 'Claude Code · Opus 5.5',
+  codex: 'Codex · GPT-5.6',
+  kimi: 'Kimi K3',
+  local: 'Modelos locales',
+} as const;
+
 /** Capas de herramientas. Solo tecnologías con caso asociado o experiencia referida. */
 export const toolbelt = [
   { layer: 'Fundamentos', items: ['C', 'C++', 'Java', 'Python', 'TypeScript', 'SQL'] },
@@ -51,6 +62,7 @@ export const toolbelt = [
   { layer: 'Servicios', items: ['Node.js', 'Express', 'NestJS', 'FastAPI', 'Spring Boot', 'APIs REST'] },
   { layer: 'Datos', items: ['PostgreSQL', 'MongoDB', 'Firestore', 'Prisma', 'Supabase', 'MySQL'] },
   { layer: 'IA', items: ['LangChain', 'LangGraph', 'RAG', 'Embeddings', 'Dify', 'MCP'] },
+  { layer: 'Agentes de código', items: [CODE_AGENTS.claude, CODE_AGENTS.codex, CODE_AGENTS.kimi, CODE_AGENTS.local] },
   { layer: 'Integraciones', items: ['Meta / WhatsApp', 'Bold', 'Firebase Auth', 'n8n', 'Cloudinary'] },
   { layer: 'Infraestructura', items: ['Firebase Hosting', 'Vercel', 'GitHub Actions', 'Docker', 'VPS', 'Linux'] },
   { layer: 'Hardware', items: ['Arduino', 'Electrónica digital', 'Proteus', 'Packet Tracer'] },

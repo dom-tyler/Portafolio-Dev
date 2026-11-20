@@ -1,6 +1,17 @@
 ---
+/**
+ * Herramientas por capa, desplegables.
+ * - Escritorio con cursor: cada capa es una tarjeta colapsada (nombre, conteo, vista previa de
+ *   íconos) que se despliega con hover o foco de teclado, superpuesta a las de abajo (sin saltos
+ *   de layout), con borde neón y esquinas de retícula. Un clic la deja fija (aria-expanded).
+ * - Táctil / móvil: acordeón por toque.
+ * - Sin JS: todas desplegadas.
+ */
 import { toolbelt } from '../../content/experience';
 import TechIcon from '../TechIcon.astro';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const PREVIEW = 4;
 ---
 
 <section aria-labelledby="stack-title">
@@ -10,25 +21,45 @@ import TechIcon from '../TechIcon.astro';
       <h2 id="stack-title" class="title-lg">Herramientas por capa</h2>
     </div>
 
-    <div class="board frame" data-reveal>
+    <div class="board" data-reveal data-toolbelt>
       {
-        toolbelt.map((t, i) => (
-          <div class="cell">
-            <p class="hud cell-head">
-              <span class="text-faint">{String(i).padStart(2, '0')}</span>
-              <TechIcon name={t.layer} size={14} />
-              {t.layer}
-            </p>
-            <ul>
-              {t.items.map((item) => (
-                <li>
-                  <TechIcon name={item} size={15} class="ico" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))
+        toolbelt.map((t, i) => {
+          const id = `capa-${i}`;
+          const rest = t.items.length - PREVIEW;
+          return (
+            <div class="slot">
+              <div class="layer" data-layer>
+                <button type="button" class="layer-head" aria-expanded="false" aria-controls={id}>
+                  <span class="head-row">
+                    <span class="hud idx">{pad(i)}</span>
+                    <TechIcon name={t.layer} size={15} class="layer-ico" />
+                    <span class="layer-name">{t.layer}</span>
+                    <span class="hud count">{pad(t.items.length)}</span>
+                    <span class="chev" aria-hidden="true" />
+                  </span>
+                  <span class="preview" aria-hidden="true">
+                    {t.items.slice(0, PREVIEW).map((item) => (
+                      <TechIcon name={item} size={14} />
+                    ))}
+                    {rest > 0 && <span class="hud more">+{rest}</span>}
+                  </span>
+                </button>
+                <div class="layer-body" id={id}>
+                  <div class="layer-inner">
+                    <ul>
+                      {t.items.map((item, k) => (
+                        <li style={`--k:${k}`}>
+                          <TechIcon name={item} size={15} class="ico" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })
       }
     </div>
   </div>
@@ -36,57 +67,266 @@ import TechIcon from '../TechIcon.astro';
 
 <style>
   .board {
+    --head: 5.75rem;
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
+    border-top: 1px solid var(--c-line);
+    border-left: 1px solid var(--c-line);
   }
-  @media (min-width: 768px) {
+  @media (min-width: 640px) {
     .board {
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
     }
   }
-  .cell {
-    padding: 1.25rem;
+  @media (min-width: 1024px) {
+    .board {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .slot {
+    position: relative;
     border-right: 1px solid var(--c-line);
     border-bottom: 1px solid var(--c-line);
-    transition: background-color 0.3s;
   }
-  .cell:hover {
-    background: color-mix(in oklab, var(--c-soldermask) 60%, transparent);
+  .layer {
+    position: relative;
+    background: color-mix(in oklab, var(--c-graphite) 55%, transparent);
+    transition:
+      background-color 0.35s var(--ease-out),
+      box-shadow 0.35s var(--ease-out);
   }
-  .cell-head {
+
+  /* Cabecera (botón) */
+  .layer-head {
+    width: 100%;
+    min-height: var(--head);
+    display: grid;
+    align-content: center;
+    gap: 0.6rem;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+  }
+  .head-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
+  }
+  .idx {
+    color: var(--c-faint);
+  }
+  .layer-head :global(.layer-ico) {
     color: var(--c-copper);
-    margin-bottom: 0.9rem;
+  }
+  .layer-name {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .count {
+    margin-left: auto;
+    color: var(--c-faint);
+  }
+  .chev {
+    position: relative;
+    width: 9px;
+    height: 9px;
+    transition: transform 0.35s var(--ease-out);
+  }
+  .chev::before,
+  .chev::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    width: 9px;
+    height: 1px;
+    background: var(--c-muted);
+  }
+  .chev::after {
+    transform: rotate(90deg);
+    transition: transform 0.35s var(--ease-out);
+  }
+  .preview {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: var(--c-faint);
+    transition: opacity 0.3s;
+  }
+  .more {
+    color: var(--c-faint);
+  }
+
+  /* Cuerpo: altura fluida 0fr → 1fr */
+  .layer-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.45s var(--ease-out);
+  }
+  .layer-inner {
+    min-height: 0;
+    overflow: hidden;
   }
   ul {
     list-style: none;
     display: grid;
-    gap: 0.45rem;
-    font-size: 0.9375rem;
+    gap: 0.5rem;
+    padding: 0 1.25rem 1.25rem;
+    font-size: 0.875rem;
     color: var(--c-muted);
-  }
-  .cell:hover li {
-    color: var(--c-ivory);
   }
   li {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    transition: color 0.3s;
+    transition:
+      opacity 0.35s var(--ease-out),
+      transform 0.35s var(--ease-out),
+      color 0.3s;
+    transition-delay: calc(var(--k) * 30ms);
   }
-  /* El ícono va un paso por debajo del texto y toma el cobre al pasar por la capa. */
   li :global(.ico) {
     color: var(--c-faint);
-    transition:
-      color 0.3s,
-      transform 0.3s var(--ease-out);
+    transition: color 0.3s;
   }
-  .cell:hover li :global(.ico) {
+
+  /* Con JS: colapsadas hasta abrirse */
+  :global(.js) .layer-body {
+    grid-template-rows: 0fr;
+  }
+  :global(.js) li {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  :global(.js) .layer[data-open] .layer-body {
+    grid-template-rows: 1fr;
+  }
+  :global(.js) .layer[data-open] li {
+    opacity: 1;
+    transform: none;
+    color: var(--c-ivory);
+  }
+  .layer[data-open] li :global(.ico) {
     color: var(--c-copper);
   }
-  li:hover :global(.ico) {
-    transform: translateY(-1px);
+  .layer[data-open] .chev::after {
+    transform: rotate(0deg);
+  }
+  :global(.js) .layer[data-open] .preview {
+    opacity: 0.35;
+  }
+
+  /* Estado abierto: borde neón y esquinas de retícula */
+  .layer::before,
+  .layer::after {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-color: var(--c-neon);
+    border-style: solid;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s var(--ease-out);
+  }
+  .layer::before {
+    top: -1px;
+    left: -1px;
+    border-width: 2px 0 0 2px;
+  }
+  .layer::after {
+    right: -1px;
+    bottom: -1px;
+    border-width: 0 2px 2px 0;
+  }
+  .layer[data-open] {
+    /* Casi opaca: se superpone a la tarjeta de abajo y no debe transparentar su texto */
+    background: color-mix(in oklab, var(--c-graphite) 98%, var(--c-ivory));
+    box-shadow:
+      0 0 0 1px var(--c-neon),
+      var(--glow-md);
+  }
+  .layer[data-open]::before,
+  .layer[data-open]::after {
+    opacity: 1;
+  }
+  .layer-head:focus-visible {
+    outline: none;
+  }
+
+  /* Escritorio con cursor: la tarjeta abierta se superpone a las de abajo (sin saltos) */
+  @media (min-width: 1024px) and (hover: hover) {
+    :global(.js) .slot {
+      height: var(--head);
+    }
+    :global(.js) .layer {
+      position: absolute;
+      inset: 0 0 auto 0;
+      z-index: 1;
+    }
+    :global(.js) .layer[data-open] {
+      z-index: 6;
+    }
+    .board {
+      /* Espacio para que la última fila pueda desplegarse sin chocar con la siguiente sección */
+      margin-bottom: 6rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .layer-body,
+    li {
+      transition: none;
+    }
   }
 </style>
+
+<script>
+  const board = document.querySelector<HTMLElement>('[data-toolbelt]');
+  if (board) {
+    const hoverDesk = window.matchMedia('(min-width: 1024px) and (hover: hover)');
+    board.querySelectorAll<HTMLElement>('[data-layer]').forEach((layer) => {
+      const btn = layer.querySelector<HTMLButtonElement>('.layer-head')!;
+      let pinned = false;
+      let hover = false;
+      let focus = false;
+      const sync = () => {
+        const open = pinned || (hoverDesk.matches && (hover || focus));
+        layer.toggleAttribute('data-open', open);
+        btn.setAttribute('aria-expanded', String(open));
+      };
+      layer.addEventListener('mouseenter', () => {
+        hover = true;
+        sync();
+      });
+      layer.addEventListener('mouseleave', () => {
+        hover = false;
+        sync();
+      });
+      layer.addEventListener('focusin', () => {
+        focus = true;
+        sync();
+      });
+      layer.addEventListener('focusout', (e) => {
+        if (!layer.contains(e.relatedTarget as Node | null)) {
+          focus = false;
+          sync();
+        }
+      });
+      btn.addEventListener('click', () => {
+        pinned = !pinned;
+        sync();
+      });
+      layer.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          pinned = false;
+          focus = false;
+          btn.blur();
+          sync();
+        }
+      });
+    });
+  }
+</script>

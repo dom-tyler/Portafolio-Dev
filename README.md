@@ -13,6 +13,15 @@ pnpm dev       # http://localhost:4321
 pnpm build     # apps/portfolio/dist
 ```
 
+## Variables de entorno
+Copia `apps/portfolio/.env.example` a `apps/portfolio/.env` y completa:
+
+| Variable | Uso |
+|---|---|
+| `PUBLIC_CONTACT_ENDPOINT` | URL del endpoint que recibe el formulario de contacto (POST JSON con `name`, `email`, `company?`, `reason`, `message`, `turnstileToken?`, `source`). Vacía: el formulario queda deshabilitado e invita a escribir por LinkedIn. |
+
+El correo de trabajo **no** va en el cliente ni en el repositorio: lo conoce solo el backend (aparte de este repo; propuesta: Firebase Function + Resend + Firestore, con aviso en el admin). El formulario ya incluye un campo trampa (`website`) y un contenedor `data-turnstile` para Cloudflare Turnstile.
+
 ## Estructura
 ```
 apps/portfolio/          sitio Astro

@@ -1,12 +1,19 @@
 ---
 import { site } from '../../content/site';
 
-const steps = [
-  { code: 'A', title: 'Entender el problema', body: 'Quién lo usa, qué decisión toma y qué pasa si falla.' },
-  { code: 'B', title: 'Definir límites', body: 'Qué es interfaz, qué es servicio, qué es dato y qué es integración.' },
-  { code: 'C', title: 'Decidir la arquitectura', body: 'La opción más simple que resiste lo que viene, con sus costos explícitos.' },
-  { code: 'D', title: 'Entregar producto', body: 'Software en manos de personas reales, medido y mantenible.' },
+/**
+ * Pipeline de ingeniería: cinco etapas sobre un bus tipo pista de PCB. Un pulso de corriente lo
+ * recorre y enciende cada nodo al pasar (solo CSS, sin blur). Se detiene con reduced-motion
+ * (regla global) y con la pausa de movimiento del hero.
+ */
+const stages = [
+  { id: '01', title: 'Descubrir', body: 'Usuarios, riesgos, criterios de éxito', artifact: 'brief.md' },
+  { id: '02', title: 'Modelar', body: 'Dominios, contratos y datos', artifact: 'openapi.yaml' },
+  { id: '03', title: 'Decidir', body: 'Arquitectura con costos explícitos', artifact: 'ADR-001' },
+  { id: '04', title: 'Construir', body: 'Tipado, probado, en CI', artifact: 'ci ✓ passing' },
+  { id: '05', title: 'Operar', body: 'Deploy, métricas e iteración', artifact: 'p95 · logs' },
 ];
+const CYCLE = 6; // segundos por recorrido del pulso
 ---
 
 <section class="approach" aria-labelledby="enfoque-title">
@@ -16,19 +23,22 @@ const steps = [
       <h2 id="enfoque-title" class="statement">{site.statement}</h2>
     </div>
 
-    <ol class="steps">
-      {
-        steps.map((s, i) => (
-          <li class="step" data-reveal style={`transition-delay:${i * 80}ms`}>
-            <span class="hud step-code">
-              <span class="text-neon">{s.code}</span> — {String(i + 1).padStart(2, '0')}
-            </span>
-            <h3 class="step-title">{s.title}</h3>
-            <p class="step-body">{s.body}</p>
-          </li>
-        ))
-      }
-    </ol>
+    <div class="pipeline" data-reveal style={`--cycle:${CYCLE}s;--n:${stages.length}`}>
+      <span class="bus" aria-hidden="true"><span class="pulse"></span></span>
+      <ol class="stages" aria-label="Pipeline de ingeniería">
+        {
+          stages.map((s, i) => (
+            <li class="stage" style={`--i:${i}`}>
+              <span class="node" aria-hidden="true" />
+              <span class="hud stage-id">{s.id}</span>
+              <h3 class="stage-title">{s.title}</h3>
+              <p class="stage-body">{s.body}</p>
+              <code class="artifact">{s.artifact}</code>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
   </div>
 </section>
 
@@ -41,44 +51,161 @@ const steps = [
     letter-spacing: -0.02em;
     max-width: 30ch;
   }
-  .steps {
+
+  .pipeline {
+    --node: 11px;
+    position: relative;
+    padding-top: 0.5rem;
+  }
+  .stages {
     list-style: none;
     display: grid;
-    border-top: 1px solid var(--c-line);
+    gap: 2rem;
   }
-  @media (min-width: 768px) {
-    .steps {
-      grid-template-columns: repeat(4, 1fr);
-    }
-  }
-  .step {
+  .stage {
+    position: relative;
     display: grid;
-    gap: 0.6rem;
+    gap: 0.45rem;
     align-content: start;
-    padding: 1.5rem 1.25rem 1.5rem 0;
-    border-bottom: 1px solid var(--c-line);
+    padding-left: 2rem;
   }
-  @media (min-width: 768px) {
-    .step {
-      border-bottom: 0;
-      padding-left: 1.25rem;
-      border-left: 1px solid var(--c-line);
+
+  /* Bus: pista de cobre con el pulso de corriente */
+  .bus {
+    position: absolute;
+    left: calc(var(--node) / 2 - 0.5px);
+    top: 0.5rem;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(180deg, var(--c-copper), color-mix(in oklab, var(--c-copper) 25%, transparent));
+    overflow: hidden;
+  }
+  .pulse {
+    position: absolute;
+    left: -1px;
+    top: 0;
+    width: 3px;
+    height: 18%;
+    background: linear-gradient(180deg, transparent, var(--c-neon) 70%, var(--c-ivory));
+    box-shadow: var(--glow-sm);
+    animation: pulse-y var(--cycle) linear infinite;
+  }
+  @keyframes pulse-y {
+    from {
+      transform: translateY(-100%);
     }
-    .step:first-child {
-      border-left: 0;
-      padding-left: 0;
+    to {
+      transform: translateY(560%);
     }
   }
-  .step-code {
-    color: var(--c-faint);
+
+  .node {
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    width: var(--node);
+    height: var(--node);
+    border: 1px solid var(--c-copper);
+    background: var(--c-graphite);
+    animation: node-hit var(--cycle) linear infinite;
+    animation-delay: calc(var(--cycle) * var(--i) / var(--n));
   }
-  .step-title {
+  @keyframes node-hit {
+    0%,
+    9% {
+      border-color: var(--c-neon);
+      background: var(--c-neon);
+      box-shadow: var(--glow-md);
+    }
+    16%,
+    100% {
+      border-color: var(--c-copper);
+      background: var(--c-graphite);
+      box-shadow: none;
+    }
+  }
+
+  .stage-id {
+    color: var(--c-copper);
+  }
+  .stage-title {
     font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: -0.01em;
   }
-  .step-body {
+  .stage-body {
     color: var(--c-muted);
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
+    max-width: 24ch;
+  }
+  .artifact {
+    justify-self: start;
+    margin-top: 0.35rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--c-line-strong);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--c-ivory);
+    background: color-mix(in oklab, var(--c-graphite) 70%, transparent);
+  }
+  .stage:nth-child(4) .artifact {
+    color: var(--c-pcb);
+    border-color: color-mix(in oklab, var(--c-pcb) 45%, transparent);
+  }
+
+  /* Escritorio: bus horizontal con los nodos encima de cada columna */
+  @media (min-width: 900px) {
+    .stages {
+      grid-template-columns: repeat(var(--n), 1fr);
+      gap: 1.5rem;
+    }
+    .stage {
+      padding-left: 0;
+      padding-top: 2rem;
+    }
+    .node {
+      top: 0;
+    }
+    .bus {
+      left: 0;
+      right: 0;
+      top: calc(0.5rem + var(--node) / 2 - 0.5px);
+      bottom: auto;
+      width: auto;
+      height: 1px;
+      background: linear-gradient(90deg, var(--c-copper), color-mix(in oklab, var(--c-copper) 25%, transparent));
+    }
+    .pulse {
+      left: 0;
+      top: -1px;
+      width: 14%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--c-neon) 70%, var(--c-ivory));
+      animation-name: pulse-x;
+    }
+    @keyframes pulse-x {
+      from {
+        transform: translateX(-100%);
+      }
+      to {
+        transform: translateX(720%);
+      }
+    }
+  }
+
+  /* Pausa de movimiento del hero (el botón afecta a todo el sitio) */
+  :global(html:has([data-hero][data-motion='paused'])) .pulse,
+  :global(html:has([data-hero][data-motion='paused'])) .node {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pulse {
+      display: none;
+    }
+    .node {
+      animation: none;
+    }
   }
 </style>

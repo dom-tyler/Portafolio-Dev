@@ -45,11 +45,11 @@ const scenes = [
       <div class="hero-copy">
         <p class="hud kicker">
           <span class="text-neon">//</span>
-          {site.name} — {site.role} · {site.location}
+          {site.kicker}
         </p>
         <h1 id="hero-title" class="display headline">
-          Diseño sistemas de software,
-          <span class="headline-2">de la arquitectura al producto.</span>
+          {site.headline[0]}
+          <span class="headline-2">{site.headline[1]}</span>
         </h1>
         <p class="subline">{site.subline}</p>
         <div class="ctas">
@@ -180,8 +180,11 @@ const scenes = [
     margin-bottom: 1.5rem;
   }
   .headline {
-    max-width: 15ch;
-    font-weight: 780;
+    max-width: 12ch;
+    font-weight: 790;
+    /* Titular corto: puede crecer más que el .display genérico */
+    font-size: clamp(2.6rem, 7vw, 6.4rem);
+    line-height: 0.98;
   }
   .headline-2 {
     display: block;

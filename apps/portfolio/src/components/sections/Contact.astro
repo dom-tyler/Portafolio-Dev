@@ -1,12 +1,20 @@
 ---
+/**
+ * Contacto: canales públicos + formulario.
+ * El formulario envía JSON a PUBLIC_CONTACT_ENDPOINT (backend aparte: guarda el mensaje, avisa al
+ * admin y reenvía al correo de trabajo). Ese correo nunca llega al cliente ni al repositorio.
+ * Sin la variable, el envío queda deshabilitado y se invita a escribir por LinkedIn.
+ */
 import { site } from '../../content/site';
 import FaceField from '../face/FaceField.astro';
 
 const channels = [
-  site.contact.email && { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
-  site.contact.linkedin && { label: 'LinkedIn', value: 'Perfil profesional', href: site.contact.linkedin },
+  { label: 'LinkedIn', value: site.contact.linkedinHandle, href: site.contact.linkedin },
   { label: 'GitHub', value: '@dom-tyler', href: site.contact.github },
-].filter(Boolean) as { label: string; value: string; href: string }[];
+];
+
+const endpoint = (import.meta.env.PUBLIC_CONTACT_ENDPOINT ?? '').trim();
+const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
 ---
 
 <section id="contacto" class="contact" aria-labelledby="contacto-title">
@@ -23,7 +31,7 @@ const channels = [
       {
         channels.map((c) => (
           <li>
-            <a href={c.href} class="channel" target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer">
+            <a href={c.href} class="channel" target="_blank" rel="noopener noreferrer">
               <span class="hud text-faint">{c.label}</span>
               <span class="channel-value">{c.value}</span>
               <span class="hud channel-go" aria-hidden="true">
@@ -34,6 +42,59 @@ const channels = [
         ))
       }
     </ul>
+
+    <form class="form" data-contact-form data-endpoint={endpoint} novalidate data-reveal aria-labelledby="form-title">
+      <p id="form-title" class="hud form-title"><span class="text-neon">//</span> Escríbeme</p>
+
+      <div class="grid">
+        <div class="field">
+          <label for="cf-name" class="hud">Nombre</label>
+          <input id="cf-name" name="name" type="text" required maxlength="80" autocomplete="name" aria-describedby="cf-name-err" />
+          <p id="cf-name-err" class="field-err" data-err></p>
+        </div>
+        <div class="field">
+          <label for="cf-email" class="hud">Correo</label>
+          <input id="cf-email" name="email" type="email" required maxlength="120" autocomplete="email" inputmode="email" aria-describedby="cf-email-err" />
+          <p id="cf-email-err" class="field-err" data-err></p>
+        </div>
+        <div class="field">
+          <label for="cf-company" class="hud">Empresa <span class="opt">(opcional)</span></label>
+          <input id="cf-company" name="company" type="text" maxlength="80" autocomplete="organization" />
+        </div>
+        <div class="field">
+          <label for="cf-reason" class="hud">Motivo</label>
+          <select id="cf-reason" name="reason" required aria-describedby="cf-reason-err">
+            <option value="" disabled selected>Selecciona…</option>
+            {reasons.map((r) => <option value={r}>{r}</option>)}
+          </select>
+          <p id="cf-reason-err" class="field-err" data-err></p>
+        </div>
+        <div class="field field--full">
+          <label for="cf-message" class="hud">Mensaje</label>
+          <textarea id="cf-message" name="message" required minlength="20" maxlength="2000" rows="5" aria-describedby="cf-message-hint cf-message-err"></textarea>
+          <p id="cf-message-hint" class="field-hint">Mínimo 20 caracteres. Cuéntame el problema, el plazo y el contexto.</p>
+          <p id="cf-message-err" class="field-err" data-err></p>
+        </div>
+      </div>
+
+      <!-- Trampa para bots: invisible para personas y lectores de pantalla -->
+      <div class="hp" aria-hidden="true">
+        <label>Sitio web <input name="website" type="text" tabindex="-1" autocomplete="off" /></label>
+      </div>
+      <!-- Reservado para Cloudflare Turnstile (el script se agrega con el backend) -->
+      <div data-turnstile></div>
+
+      <div class="actions">
+        <button type="submit" class="btn btn--primary" data-submit disabled={!endpoint}>
+          <span data-submit-label>{endpoint ? 'Enviar mensaje' : 'Formulario en configuración — escríbeme por LinkedIn'}</span>
+          {endpoint && <span class="arrow" aria-hidden="true">→</span>}
+        </button>
+        <p class="hud form-status" role="status" aria-live="polite" data-form-status>
+          {!endpoint && <a href={site.contact.linkedin} target="_blank" rel="noopener noreferrer" class="link-copper">LinkedIn ↗</a>}
+        </p>
+      </div>
+      <p class="hud privacy">Tu correo solo se usa para responderte. No se publica ni se comparte.</p>
+    </form>
 
     <p class="hud status" data-reveal>
       <span class="led" aria-hidden="true"></span>
@@ -52,7 +113,7 @@ const channels = [
     padding-bottom: clamp(4rem, 8vw, 7rem);
   }
   .contact-shell > * {
-    max-width: 40rem;
+    max-width: 36rem;
   }
   @media (max-width: 767px) {
     .contact {
@@ -71,7 +132,7 @@ const channels = [
     grid-template-columns: 6rem 1fr auto;
     align-items: baseline;
     gap: 1rem;
-    padding: 1.5rem 0;
+    padding: 1.1rem 0;
     border-bottom: 1px solid var(--c-line);
     transition: padding-left 0.4s var(--ease-out);
   }
@@ -79,10 +140,11 @@ const channels = [
     padding-left: 0.75rem;
   }
   .channel-value {
-    font-size: clamp(1.25rem, 2.6vw, 2rem);
+    font-size: clamp(1.05rem, 2vw, 1.5rem);
     font-weight: 500;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
     transition: color 0.3s;
+    overflow-wrap: anywhere;
   }
   .channel:hover .channel-value {
     color: var(--c-neon);
@@ -91,11 +153,239 @@ const channels = [
     color: var(--c-faint);
     font-size: 1rem;
   }
+
+  /* ---------------- Formulario ---------------- */
+  .form {
+    margin-top: 2.75rem;
+  }
+  .form-title {
+    color: var(--c-muted);
+    margin-bottom: 1.25rem;
+  }
+  .grid {
+    display: grid;
+    gap: 1.4rem 1.5rem;
+  }
+  @media (min-width: 640px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+    }
+    .field--full {
+      grid-column: 1 / -1;
+    }
+  }
+  .field {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+  .field label {
+    color: var(--c-faint);
+  }
+  .opt {
+    color: color-mix(in oklab, var(--c-ivory) 25%, var(--c-graphite));
+    text-transform: none;
+    letter-spacing: 0.04em;
+  }
+  input,
+  select,
+  textarea {
+    width: 100%;
+    padding: 0.55rem 0 0.6rem;
+    border: 0;
+    border-bottom: 1px solid var(--c-line-strong);
+    border-radius: 0;
+    background: transparent;
+    color: var(--c-ivory);
+    font: inherit;
+    font-size: 0.9375rem;
+    transition:
+      border-color 0.25s var(--ease-out),
+      box-shadow 0.25s var(--ease-out);
+  }
+  textarea {
+    resize: vertical;
+    min-height: 7.5rem;
+    line-height: 1.55;
+  }
+  select {
+    appearance: none;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--c-muted) 50%), linear-gradient(-45deg, transparent 50%, var(--c-muted) 50%);
+    background-position:
+      calc(100% - 9px) 55%,
+      calc(100% - 4px) 55%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+  }
+  select option {
+    background: var(--c-graphite);
+    color: var(--c-ivory);
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-bottom-color: var(--c-neon);
+    box-shadow: 0 1px 0 var(--c-neon), 0 8px 14px -12px var(--c-neon);
+  }
+  [aria-invalid='true'] {
+    border-bottom-color: var(--c-neon);
+    border-bottom-style: dashed;
+  }
+  .field-hint {
+    font-size: 0.75rem;
+    color: var(--c-faint);
+  }
+  .field-err {
+    min-height: 0;
+    font-size: 0.75rem;
+    color: var(--c-neon);
+  }
+  .field-err:empty {
+    display: none;
+  }
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.25rem;
+    margin-top: 1.75rem;
+  }
+  .btn[disabled] {
+    cursor: not-allowed;
+    background: transparent;
+    border-color: var(--c-line-strong);
+    color: var(--c-muted);
+    box-shadow: none;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+  .btn[aria-busy='true'] {
+    opacity: 0.75;
+    cursor: progress;
+  }
+  .form-status {
+    color: var(--c-muted);
+  }
+  .form-status[data-state='ok'] {
+    color: var(--c-pcb);
+  }
+  .form-status[data-state='error'] {
+    color: var(--c-neon);
+  }
+  .privacy {
+    margin-top: 1rem;
+    color: var(--c-faint);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
   .status {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
     color: var(--c-muted);
   }
 </style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
+  if (form) {
+    const submit = form.querySelector<HTMLButtonElement>('[data-submit]')!;
+    const label = form.querySelector<HTMLElement>('[data-submit-label]')!;
+    const status = form.querySelector<HTMLElement>('[data-form-status]')!;
+    const fields = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input[name]:not([name="website"]), select, textarea'));
+
+    const messageFor = (el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+      const v = el.validity;
+      if (v.valueMissing) return el.tagName === 'SELECT' ? 'Elige un motivo.' : 'Este campo es obligatorio.';
+      if (v.typeMismatch) return 'Escribe un correo válido (nombre@dominio).';
+      if (v.tooShort) return `Escribe al menos ${(el as HTMLTextAreaElement).minLength} caracteres (llevas ${el.value.trim().length}).`;
+      if (v.tooLong) return 'El texto es demasiado largo.';
+      return '';
+    };
+    const check = (el: (typeof fields)[number]) => {
+      const err = el.getAttribute('aria-describedby')?.split(' ').map((id) => document.getElementById(id)).find((n) => n?.hasAttribute('data-err'));
+      // minlength solo actúa sobre texto editado por la persona: se verifica también a mano.
+      const min = (el as HTMLTextAreaElement).minLength;
+      const short = min > 0 && el.value.trim().length > 0 && el.value.trim().length < min;
+      const msg = short ? `Escribe al menos ${min} caracteres (llevas ${el.value.trim().length}).` : el.checkValidity() ? '' : messageFor(el);
+      el.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      if (err) err.textContent = msg;
+      return !msg;
+    };
+    // Valida al salir del campo y, si ya marcó error, mientras corrige
+    fields.forEach((el) => {
+      el.addEventListener('blur', () => el.value && check(el));
+      el.addEventListener('input', () => el.getAttribute('aria-invalid') === 'true' && check(el));
+    });
+
+    const setStatus = (text: string, state: 'idle' | 'sending' | 'ok' | 'error') => {
+      status.textContent = text;
+      status.dataset.state = state;
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const endpoint = form.dataset.endpoint ?? '';
+      if (!endpoint) return;
+      const results = fields.map(check);
+      if (results.includes(false)) {
+        fields[results.indexOf(false)].focus();
+        setStatus('Revisa los campos marcados.', 'error');
+        return;
+      }
+      const data = new FormData(form);
+      // Trampa: si un bot llenó el campo oculto, se simula éxito sin enviar nada.
+      if (String(data.get('website') ?? '').trim()) {
+        form.reset();
+        setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
+        return;
+      }
+      const payload = {
+        name: String(data.get('name') ?? '').trim(),
+        email: String(data.get('email') ?? '').trim(),
+        company: String(data.get('company') ?? '').trim() || undefined,
+        reason: String(data.get('reason') ?? ''),
+        message: String(data.get('message') ?? '').trim(),
+        turnstileToken: String(data.get('cf-turnstile-response') ?? '') || undefined,
+        source: location.pathname,
+      };
+      submit.disabled = true;
+      submit.setAttribute('aria-busy', 'true');
+      const prev = label.textContent;
+      label.textContent = 'Enviando…';
+      setStatus('Enviando mensaje…', 'sending');
+      const ctrl = new AbortController();
+      const timer = window.setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: ctrl.signal,
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        form.reset();
+        fields.forEach((el) => el.setAttribute('aria-invalid', 'false'));
+        setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
+      } catch (err) {
+        console.warn('[contacto] envío fallido', err);
+        setStatus('No se pudo enviar. Intenta de nuevo o escríbeme por LinkedIn.', 'error');
+      } finally {
+        window.clearTimeout(timer);
+        submit.disabled = false;
+        submit.removeAttribute('aria-busy');
+        label.textContent = prev;
+      }
+    });
+  }
+</script>

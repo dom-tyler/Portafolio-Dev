@@ -15,7 +15,7 @@
 
 <br />
 
-## <code>01</code> Quién soy
+## Quién soy
 
 <table>
 <tr>
@@ -48,13 +48,13 @@ Este repositorio es mi portafolio y, a la vez, una muestra de cómo trabajo.
 </tr>
 </table>
 
-## <code>02</code> Cómo trabajo
+## Cómo trabajo
 
 > **Entiendo el problema, trazo los límites y elijo la arquitectura más simple que aguante lo que viene.**
 
-<img src="docs/readme/pipeline.svg" width="100%" alt="Pipeline: 01 Descubrir (brief.md) · 02 Modelar (openapi.yaml) · 03 Decidir (ADR-001) · 04 Construir (ci passing) · 05 Operar (p95 · logs)" />
+<img src="docs/readme/pipeline.svg" width="100%" alt="Pipeline: Descubrir (brief.md) · Modelar (openapi.yaml) · Decidir (ADR-001) · Construir (ci passing) · Operar (p95 · logs)" />
 
-## <code>03</code> Proyectos destacados
+## Proyectos destacados
 
 <table>
 <tr>
@@ -120,7 +120,7 @@ Lenguaje educativo con intérprete propio, interfaz gráfica y CLI.
 
 <sub>**En el laboratorio:** CRM multicanal con agente conversacional · multitenancy en NestJS + Prisma · app social full stack · marketplace con visor 3D · sistemas de juego en Godot 4. Todos están en el [portafolio →](https://daniel-dev-portafolio.web.app/proyectos)</sub>
 
-## <code>04</code> Stack por capa
+## Stack por capa
 
 | Capa | Herramientas |
 |:--|:--|
@@ -134,7 +134,7 @@ Lenguaje educativo con intérprete propio, interfaz gráfica y CLI.
 | **Infraestructura** | ![Firebase](https://img.shields.io/badge/Firebase-0E1113?style=flat-square&logo=firebase&logoColor=D4823F) ![Cloudflare](https://img.shields.io/badge/Cloudflare-0E1113?style=flat-square&logo=cloudflare&logoColor=D4823F) ![Vercel](https://img.shields.io/badge/Vercel-0E1113?style=flat-square&logo=vercel&logoColor=D4823F) ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-0E1113?style=flat-square&logo=githubactions&logoColor=D4823F) ![Docker](https://img.shields.io/badge/Docker-0E1113?style=flat-square&logo=docker&logoColor=D4823F) ![Linux](https://img.shields.io/badge/Linux-0E1113?style=flat-square&logo=linux&logoColor=D4823F) |
 | **Hardware** | ![Arduino](https://img.shields.io/badge/Arduino-0E1113?style=flat-square&logo=arduino&logoColor=D4823F) ![Electrónica digital](https://img.shields.io/badge/Electr%C3%B3nica%20digital-0E1113?style=flat-square) ![Proteus](https://img.shields.io/badge/Proteus-0E1113?style=flat-square) |
 
-## <code>05</code> Cómo está hecho este portafolio
+## Cómo está hecho este portafolio
 
 No es una plantilla. Es un sistema pequeño, con sus propias decisiones de arquitectura y todo en planes gratuitos.
 
@@ -170,7 +170,7 @@ flowchart LR
 <img src="https://img.shields.io/badge/pnpm%20workspaces-0E1113?style=flat-square&logo=pnpm&logoColor=D4823F" alt="pnpm workspaces" />
 </p>
 
-## <code>06</code> Contacto
+## Contacto
 
 <div align="center">
 

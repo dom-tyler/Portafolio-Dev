@@ -4,17 +4,27 @@
  * El formulario envía JSON a PUBLIC_CONTACT_ENDPOINT (backend aparte: guarda el mensaje, avisa al
  * admin y reenvía al correo de trabajo). Ese correo nunca llega al cliente ni al repositorio.
  * Sin la variable, el envío queda deshabilitado y se invita a escribir por LinkedIn.
+ * Contrato con apps/contact-api: ver README (cuerpo, límites y respuestas 200/400/403/429/5xx).
+ * Turnstile solo se carga si existe PUBLIC_TURNSTILE_SITE_KEY.
  */
 import { site } from '../../content/site';
 import FaceField from '../face/FaceField.astro';
 
 const channels = [
+  { label: 'Correo', value: site.contact.email, href: `mailto:${site.contact.email}` },
   { label: 'LinkedIn', value: site.contact.linkedinHandle, href: site.contact.linkedin },
   { label: 'GitHub', value: '@dom-tyler', href: site.contact.github },
 ];
 
 const endpoint = (import.meta.env.PUBLIC_CONTACT_ENDPOINT ?? '').trim();
-const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
+const turnstileKey = (import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? '').trim();
+// Valores del contrato del backend; la etiqueta es lo que ve la persona.
+const reasons = [
+  { value: 'proyecto', label: 'Proyecto' },
+  { value: 'empleo', label: 'Empleo' },
+  { value: 'consultoria', label: 'Consultoría' },
+  { value: 'otro', label: 'Otro' },
+];
 ---
 
 <section id="contacto" class="contact" aria-labelledby="contacto-title">
@@ -31,7 +41,7 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
       {
         channels.map((c) => (
           <li>
-            <a href={c.href} class="channel" target="_blank" rel="noopener noreferrer">
+            <a href={c.href} class="channel" target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer">
               <span class="hud text-faint">{c.label}</span>
               <span class="channel-value">{c.value}</span>
               <span class="hud channel-go" aria-hidden="true">
@@ -49,7 +59,7 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
       <div class="grid">
         <div class="field">
           <label for="cf-name" class="hud">Nombre</label>
-          <input id="cf-name" name="name" type="text" required maxlength="80" autocomplete="name" aria-describedby="cf-name-err" />
+          <input id="cf-name" name="name" type="text" required minlength="2" maxlength="80" autocomplete="name" aria-describedby="cf-name-err" />
           <p id="cf-name-err" class="field-err" data-err></p>
         </div>
         <div class="field">
@@ -59,19 +69,20 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
         </div>
         <div class="field">
           <label for="cf-company" class="hud">Empresa <span class="opt">(opcional)</span></label>
-          <input id="cf-company" name="company" type="text" maxlength="80" autocomplete="organization" />
+          <input id="cf-company" name="company" type="text" maxlength="120" autocomplete="organization" aria-describedby="cf-company-err" />
+          <p id="cf-company-err" class="field-err" data-err></p>
         </div>
         <div class="field">
           <label for="cf-reason" class="hud">Motivo</label>
           <select id="cf-reason" name="reason" required aria-describedby="cf-reason-err">
             <option value="" disabled selected>Selecciona…</option>
-            {reasons.map((r) => <option value={r}>{r}</option>)}
+            {reasons.map((r) => <option value={r.value}>{r.label}</option>)}
           </select>
           <p id="cf-reason-err" class="field-err" data-err></p>
         </div>
         <div class="field field--full">
           <label for="cf-message" class="hud">Mensaje</label>
-          <textarea id="cf-message" name="message" required minlength="20" maxlength="2000" rows="5" aria-describedby="cf-message-hint cf-message-err"></textarea>
+          <textarea id="cf-message" name="message" required minlength="20" maxlength="4000" rows="5" aria-describedby="cf-message-hint cf-message-err"></textarea>
           <p id="cf-message-hint" class="field-hint">Mínimo 20 caracteres. Cuéntame el problema, el plazo y el contexto.</p>
           <p id="cf-message-err" class="field-err" data-err></p>
         </div>
@@ -81,8 +92,9 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
       <div class="hp" aria-hidden="true">
         <label>Sitio web <input name="website" type="text" tabindex="-1" autocomplete="off" /></label>
       </div>
-      <!-- Reservado para Cloudflare Turnstile (el script se agrega con el backend) -->
-      <div data-turnstile></div>
+      <!-- Cloudflare Turnstile: solo con PUBLIC_TURNSTILE_SITE_KEY (render implícito, tema oscuro) -->
+      <div data-turnstile class:list={['turnstile', { 'cf-turnstile': turnstileKey }]} data-sitekey={turnstileKey || undefined} data-theme="dark"></div>
+      {turnstileKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
       <div class="actions">
         <button type="submit" class="btn btn--primary" data-submit disabled={!endpoint}>
@@ -245,6 +257,9 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
   .field-err:empty {
     display: none;
   }
+  .turnstile:not(:empty) {
+    margin-top: 1.5rem;
+  }
   .hp {
     position: absolute;
     left: -10000px;
@@ -297,29 +312,42 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
 </style>
 
 <script>
+  type Field = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  type ApiError = { ok?: boolean; error?: 'invalid' | 'captcha' | 'rate_limited' | 'server'; fields?: Record<string, string> };
+
   const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
   if (form) {
     const submit = form.querySelector<HTMLButtonElement>('[data-submit]')!;
     const label = form.querySelector<HTMLElement>('[data-submit-label]')!;
     const status = form.querySelector<HTMLElement>('[data-form-status]')!;
-    const fields = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('input[name]:not([name="website"]), select, textarea'));
+    const turnstileEl = form.querySelector<HTMLElement>('[data-turnstile].cf-turnstile');
+    const fields = Array.from(form.querySelectorAll<Field>('input[name]:not([name="website"]), select, textarea'));
 
-    const messageFor = (el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+    const errorEl = (el: Field) =>
+      el
+        .getAttribute('aria-describedby')
+        ?.split(' ')
+        .map((id) => document.getElementById(id))
+        .find((n) => n?.hasAttribute('data-err')) ?? null;
+    const setFieldError = (el: Field, msg: string) => {
+      el.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      const err = errorEl(el);
+      if (err) err.textContent = msg;
+    };
+    const messageFor = (el: Field) => {
       const v = el.validity;
       if (v.valueMissing) return el.tagName === 'SELECT' ? 'Elige un motivo.' : 'Este campo es obligatorio.';
       if (v.typeMismatch) return 'Escribe un correo válido (nombre@dominio).';
-      if (v.tooShort) return `Escribe al menos ${(el as HTMLTextAreaElement).minLength} caracteres (llevas ${el.value.trim().length}).`;
       if (v.tooLong) return 'El texto es demasiado largo.';
       return '';
     };
-    const check = (el: (typeof fields)[number]) => {
-      const err = el.getAttribute('aria-describedby')?.split(' ').map((id) => document.getElementById(id)).find((n) => n?.hasAttribute('data-err'));
+    const check = (el: Field) => {
       // minlength solo actúa sobre texto editado por la persona: se verifica también a mano.
       const min = (el as HTMLTextAreaElement).minLength;
-      const short = min > 0 && el.value.trim().length > 0 && el.value.trim().length < min;
-      const msg = short ? `Escribe al menos ${min} caracteres (llevas ${el.value.trim().length}).` : el.checkValidity() ? '' : messageFor(el);
-      el.setAttribute('aria-invalid', msg ? 'true' : 'false');
-      if (err) err.textContent = msg;
+      const len = el.value.trim().length;
+      const short = min > 0 && len > 0 && len < min;
+      const msg = short ? `Escribe al menos ${min} caracteres (llevas ${len}).` : el.checkValidity() ? '' : messageFor(el);
+      setFieldError(el, msg);
       return !msg;
     };
     // Valida al salir del campo y, si ya marcó error, mientras corrige
@@ -332,6 +360,7 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
       status.textContent = text;
       status.dataset.state = state;
     };
+    const turnstile = () => (window as Window & { turnstile?: { reset(el?: HTMLElement): void } }).turnstile;
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -344,20 +373,27 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
         return;
       }
       const data = new FormData(form);
+      const website = String(data.get('website') ?? '');
       // Trampa: si un bot llenó el campo oculto, se simula éxito sin enviar nada.
-      if (String(data.get('website') ?? '').trim()) {
+      if (website.trim()) {
         form.reset();
         setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
         return;
       }
+      const token = String(data.get('cf-turnstile-response') ?? '');
+      if (turnstileEl && !token) {
+        setStatus('Completa la verificación antes de enviar.', 'error');
+        return;
+      }
+      const company = String(data.get('company') ?? '').trim();
       const payload = {
         name: String(data.get('name') ?? '').trim(),
         email: String(data.get('email') ?? '').trim(),
-        company: String(data.get('company') ?? '').trim() || undefined,
+        ...(company ? { company } : {}),
         reason: String(data.get('reason') ?? ''),
         message: String(data.get('message') ?? '').trim(),
-        turnstileToken: String(data.get('cf-turnstile-response') ?? '') || undefined,
-        source: location.pathname,
+        website,
+        ...(token ? { turnstileToken: token } : {}),
       };
       submit.disabled = true;
       submit.setAttribute('aria-busy', 'true');
@@ -365,7 +401,7 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
       label.textContent = 'Enviando…';
       setStatus('Enviando mensaje…', 'sending');
       const ctrl = new AbortController();
-      const timer = window.setTimeout(() => ctrl.abort(), 12000);
+      const timer = window.setTimeout(() => ctrl.abort(), 15000);
       try {
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -373,15 +409,41 @@ const reasons = ['Proyecto', 'Empleo', 'Consultoría', 'Otro'];
           body: JSON.stringify(payload),
           signal: ctrl.signal,
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        form.reset();
-        fields.forEach((el) => el.setAttribute('aria-invalid', 'false'));
-        setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
+        let body: ApiError | null = null;
+        try {
+          body = (await res.json()) as ApiError;
+        } catch {
+          /* respuesta sin JSON */
+        }
+        if (res.ok && body?.ok !== false) {
+          form.reset();
+          fields.forEach((el) => setFieldError(el, ''));
+          setStatus('Mensaje enviado. Te respondo pronto.', 'ok');
+        } else if (res.status === 400 && body?.fields) {
+          // Errores del servidor, cada uno en su campo
+          let first: Field | null = null;
+          for (const [name, msg] of Object.entries(body.fields)) {
+            const el = form.querySelector<Field>(`[name="${CSS.escape(name)}"]`);
+            if (!el) continue;
+            setFieldError(el, msg);
+            first ??= el;
+          }
+          first?.focus();
+          setStatus('Revisa los campos marcados.', 'error');
+        } else if (res.status === 403 || body?.error === 'captcha') {
+          setStatus('No pudimos verificar que eres una persona. Completa la verificación de nuevo.', 'error');
+        } else if (res.status === 429 || body?.error === 'rate_limited') {
+          setStatus('Recibí demasiados mensajes desde tu conexión. Intenta más tarde.', 'error');
+        } else {
+          setStatus('El servidor no pudo procesar el mensaje. Intenta en unos minutos o escríbeme por LinkedIn.', 'error');
+        }
       } catch (err) {
         console.warn('[contacto] envío fallido', err);
-        setStatus('No se pudo enviar. Intenta de nuevo o escríbeme por LinkedIn.', 'error');
+        setStatus('No se pudo conectar. Revisa tu conexión e intenta de nuevo, o escríbeme por LinkedIn.', 'error');
       } finally {
         window.clearTimeout(timer);
+        // El token de Turnstile es de un solo uso
+        if (turnstileEl) turnstile()?.reset(turnstileEl);
         submit.disabled = false;
         submit.removeAttribute('aria-busy');
         label.textContent = prev;

@@ -52,7 +52,7 @@ export const CODE_AGENTS = {
   claude: 'Claude Code · Opus 5.5',
   codex: 'Codex · GPT-5.6',
   kimi: 'Kimi K3',
-  local: 'Modelos locales',
+  local: 'Modelos locales · LM Studio',
 } as const;
 
 /** Capas de herramientas. Solo tecnologías con caso asociado o experiencia referida. */

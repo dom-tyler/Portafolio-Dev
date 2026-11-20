@@ -18,9 +18,21 @@ Copia `apps/portfolio/.env.example` a `apps/portfolio/.env` y completa:
 
 | Variable | Uso |
 |---|---|
-| `PUBLIC_CONTACT_ENDPOINT` | URL del endpoint que recibe el formulario de contacto (POST JSON con `name`, `email`, `company?`, `reason`, `message`, `turnstileToken?`, `source`). Vacía: el formulario queda deshabilitado e invita a escribir por LinkedIn. |
+| `PUBLIC_CONTACT_ENDPOINT` | Endpoint del formulario de contacto. En producción `/api/contact` (rewrite de Firebase Hosting, mismo origen). Vacía: el formulario queda deshabilitado e invita a escribir por LinkedIn. |
+| `PUBLIC_TURNSTILE_SITE_KEY` | Site key de Cloudflare Turnstile. Si existe, la página de inicio carga el script y el widget (tema oscuro) y envía el token; si no, no se carga nada. |
 
-El correo de trabajo **no** va en el cliente ni en el repositorio: lo conoce solo el backend (aparte de este repo; propuesta: Firebase Function + Resend + Firestore, con aviso en el admin). El formulario ya incluye un campo trampa (`website`) y un contenedor `data-turnstile` para Cloudflare Turnstile.
+### Contrato del formulario (backend en `apps/contact-api`)
+`POST` con `Content-Type: application/json`:
+
+```ts
+{ name: string /* 2–80 */, email: string /* ≤120 */, company?: string /* ≤120 */,
+  reason: 'proyecto' | 'empleo' | 'consultoria' | 'otro', message: string /* 20–4000 */,
+  website: string /* trampa: siempre vacío */, turnstileToken?: string }
+```
+
+Respuestas: `200 {ok:true}` · `400 {ok:false, error:'invalid', fields:{campo:'mensaje'}}` (cada mensaje se muestra en su campo) · `403 {error:'captcha'}` · `429 {error:'rate_limited'}` (se pide intentar más tarde) · `5xx {error:'server'}`.
+
+El correo público (`site.ts → contact.email`) es distinto del correo de trabajo, que recibe el formulario y **no** está en el cliente ni en el repositorio: lo conoce solo el backend.
 
 ## Estructura
 ```

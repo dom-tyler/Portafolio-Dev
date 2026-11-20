@@ -63,7 +63,7 @@ const BRANDS: Record<string, string> = {
 const BRAND_PREFIX: [string, string][] = [
   ['Claude', 'Claude'],
   ['Kimi', 'Kimi'],
-  ['Modelos locales', 'Ollama'],
+  ['Modelos locales', 'Lmstudio'],
 ];
 
 // Íconos de línea propios (viewBox 24, trazo 1.5). Solo formas geométricas simples.

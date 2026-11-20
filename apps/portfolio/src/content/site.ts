@@ -1,8 +1,8 @@
 /**
  * Datos de identidad y contacto del sitio.
  * Solo canales que Daniel haya aprobado como públicos.
- * El correo de trabajo NO va aquí: el formulario de contacto envía a un endpoint
- * (PUBLIC_CONTACT_ENDPOINT) que lo guarda del lado del servidor.
+ * `email` es el correo PÚBLICO que Daniel eligió publicar. El correo de trabajo (destino del
+ * formulario) NO va aquí: lo conoce solo el backend detrás de PUBLIC_CONTACT_ENDPOINT.
  */
 export const site = {
   name: 'Daniel Osorio Maturana',
@@ -16,6 +16,7 @@ export const site = {
   statement: 'Entiendo el problema, trazo los límites y elijo la arquitectura más simple que aguante lo que viene.',
   contact: {
     github: 'https://github.com/dom-tyler',
+    email: 'daniel-dev-osoma@gmail.com',
     linkedin: 'https://www.linkedin.com/in/dom-tyler-dev',
     linkedinHandle: '@dom-tyler-dev',
   },
